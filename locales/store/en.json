@@ -1,0 +1,6 @@
+{
+  "CFBundleDisplayName": "Stars",
+  "NSCameraUsageDescription": "Stars uses the camera so you can photograph a vehicle and attach progress photos to an order.",
+  "NSPhotoLibraryUsageDescription": "Stars needs access to your photos so you can attach vehicle and service-progress images to an order.",
+  "NSPhotoLibraryAddUsageDescription": "Stars saves service-progress photos you download to your photo library."
+}

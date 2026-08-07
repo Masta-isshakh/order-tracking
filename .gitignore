@@ -42,7 +42,14 @@ yarn-error.*
 
 
 # amplify
-node_modules
 .amplify
-amplify_outputs*
 amplifyconfiguration*
+
+# amplify_outputs.json holds only public identifiers (pool ids, API URL) and the
+# app cannot start without it. Keep it OUT of git for the personal sandbox, and
+# generate it in CI for real builds:
+#   npx ampx generate outputs --app-id <id> --branch <branch>
+amplify_outputs*
+
+# EAS
+.easignore.local
