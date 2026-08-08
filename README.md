@@ -18,21 +18,26 @@ Everything is bilingual (English / العربية with full RTL) and ships four 
 ## 1. How sign-in works
 
 There are **no passwords anywhere**. A user types their phone number, receives a
-6-digit SMS code from Amazon SNS, and is routed by their Cognito group.
+6-digit SMS code, and is routed by their Cognito group.
 
-```
+Who delivers that code is a one-line switch in
+[`amplify/auth/otp-config.ts`](amplify/auth/otp-config.ts) — **AWS SNS**,
+**Twilio Verify** or **Firebase**. Everything below is identical whichever you
+pick. See [`docs/OTP-PROVIDERS.md`](docs/OTP-PROVIDERS.md) to choose, and
+[`docs/TWILIO-SETUP.md`](docs/TWILIO-SETUP.md) for a click-by-click Twilio walkthrough.
+
+```text
 InitiateAuth (CUSTOM_AUTH)
         │
         ├─ defineAuthChallenge   → unknown number? fail immediately, send nothing
         │                        → otherwise ask for CUSTOM_CHALLENGE
         │
-        ├─ createAuthChallenge   → issue a 6-digit code, store it in DynamoDB
-        │                          with a 5-minute TTL, publish via SNS
+        ├─ createAuthChallenge   → hand the number to the configured provider
         │                        → on a retry or an early resend, re-serve the
-        │                          SAME code instead of sending another SMS
+        │                          SAME challenge instead of sending another SMS
         │
-        └─ verifyAuthChallenge   → constant-time compare, delete the code on
-                                   success so it can never be replayed
+        └─ verifyAuthChallenge   → check the answer the way it was issued, then
+                                   burn it so it can never be replayed
 ```
 
 Guarantees this design gives you, all covered by the test suite:
@@ -77,7 +82,7 @@ takes you into the admin workspace.
 
 ### The account chain
 
-```
+```text
 scripts/seed-admin.mjs  →  ADMIN
 ADMIN  → Team tab       →  SUPERVISOR
 SUPERVISOR → New order  →  CUSTOMER
@@ -91,21 +96,24 @@ order (or they book online), which is what makes the Track tab work for them.
 
 ## 3. Verifying the backend
 
-Three scripts talk to the **deployed** backend, not to mocks.
+These talk to the **deployed** backend, not to mocks.
 
 ```bash
-node scripts/check-backend.mjs      # configuration audit (10 checks)
-node scripts/test-auth-flow.mjs     # full OTP lifecycle (16 checks)
-node scripts/test-data-flows.mjs    # 3 workspaces + authorization (28 checks)
+npm run test:all              # everything below, plus typecheck
+
+npm run check:backend         # configuration audit (10 checks)
+npm run test:auth             # full OTP lifecycle (16 checks)
+npm run test:data             # 3 workspaces + authorization (28 checks)
+npm run test:firebase         # ID-token verifier accepts/refuses correctly (19 cases)
+npm run check:otp             # whichever provider is configured right now
 ```
 
-`test-auth-flow.mjs` and `test-data-flows.mjs` create and delete their own
-accounts, and use numbers in the `+1 555-01xx` range that telecom standards
-reserve for fiction, so **no real handset is ever texted**. Pass your own number
-to `test-auth-flow.mjs` to also confirm real delivery:
+The integration scripts create and delete their own accounts, and use numbers in
+the `+1 555-01xx` range that telecom standards reserve for fiction, so **no real
+handset is ever texted**. Pass your own number to confirm real delivery:
 
 ```bash
-node scripts/test-auth-flow.mjs +97455512345   # sends one real SMS
+npm run check:otp -- +97455512345    # sends one real SMS
 ```
 
 To debug a failure:
@@ -120,9 +128,11 @@ node scripts/logs.mjs usermanager 30           # why an account was not created
 
 ## 4. Project layout
 
-```
+```text
 amplify/                     backend (Amplify Gen 2, deployed to ap-south-1)
+  auth/otp-config.ts         ← THE provider switch (SNS / Twilio / Firebase)
   auth/                      phone-only auth + the three custom-auth triggers
+  shared/otp/                one module per provider, same interface
   data/resource.ts           GraphQL schema and every authorization rule
   storage/resource.ts        S3 paths for catalog, order and chat images
   functions/
@@ -180,9 +190,10 @@ npx ampx pipeline-deploy --branch main --app-id <YOUR_AMPLIFY_APP_ID>
 npx ampx generate outputs --app-id <YOUR_AMPLIFY_APP_ID> --branch main
 ```
 
-See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full store checklist and
-[`docs/SMS-QATAR.md`](docs/SMS-QATAR.md) for the Sender ID registration that
-Qatari networks require before OTPs reach real phones.
+See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full store checklist,
+[`docs/OTP-PROVIDERS.md`](docs/OTP-PROVIDERS.md) to pick an SMS provider, and
+[`docs/SMS-QATAR.md`](docs/SMS-QATAR.md) for the Sender ID registration AWS
+needs before OTPs reach real Qatari phones.
 
 ---
 
@@ -192,7 +203,10 @@ Qatari networks require before OTPs reach real phones.
 | --- | --- |
 | `npm start` | Expo dev server |
 | `npm run sandbox` | deploy + watch the backend |
-| `npm run typecheck` | `tsc --noEmit` over the whole app |
+| `npm run test:all` | typecheck + every integration suite |
+| `npm run check:otp -- +974…` | send one real SMS through the active provider |
+| `npm run logs -- createauthchallenge 30` | why a code did not arrive |
+| `npm run seed:admin -- +974… "Name"` | create the first administrator |
 | `npm run doctor` | Expo dependency/config audit |
 | `npx expo export --platform ios` | production bundle (catches runtime import errors) |
 | `npm run sandbox:delete` | tear the sandbox down |

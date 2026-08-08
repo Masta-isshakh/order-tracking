@@ -43,6 +43,7 @@
     "@aws-sdk/client-cognito-identity": "^3.1106.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.1106.0",
     "@aws-sdk/client-dynamodb": "^3.1106.0",
+    "@aws-sdk/client-lambda": "^3.1106.0",
     "@aws-sdk/client-sns": "^3.1106.0",
     "@aws-sdk/lib-dynamodb": "^3.1106.0",
     "@types/aws-lambda": "^8.10.162",
@@ -63,8 +64,16 @@
     "sandbox:delete": "ampx sandbox delete --identifier stars",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
-    "seed:admin": "tsx scripts/seed-admin.ts",
-    "doctor": "npx expo-doctor"
+    "doctor": "npx expo-doctor",
+    "seed:admin": "node scripts/seed-admin.mjs",
+    "seed:content": "node scripts/seed-content.mjs",
+    "check:backend": "node scripts/check-backend.mjs",
+    "check:otp": "node scripts/test-otp-provider.mjs",
+    "test:auth": "node scripts/test-auth-flow.mjs",
+    "test:data": "node scripts/test-data-flows.mjs",
+    "test:firebase": "tsx scripts/test-firebase-verifier.mts",
+    "test:all": "npm run typecheck && npm run check:backend && npm run test:auth && npm run test:data && npm run test:firebase",
+    "logs": "node scripts/logs.mjs"
   },
   "private": true
 }

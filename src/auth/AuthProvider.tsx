@@ -39,10 +39,19 @@ export class AuthError extends Error {
   }
 }
 
+/** Who is delivering and checking the code. Reported by createAuthChallenge. */
+export type OtpProvider = 'SNS' | 'TWILIO' | 'FIREBASE';
+
 type ChallengeState = {
   phone: string;
   /** Masked number returned by the backend, safe to display. */
   destination: string;
+  /**
+   * SNS and TWILIO both mean "the user types the 6 digits they were texted", so
+   * the UI is identical. FIREBASE means the device must run the Firebase phone
+   * flow itself and answer with an ID token.
+   */
+  provider: OtpProvider;
   requestedAt: number;
 };
 
@@ -180,9 +189,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (info.deliveryFailed === 'true') throw new AuthError('SMS_FAILED');
       if (info.throttled === 'true') throw new AuthError('TOO_MANY_REQUESTS');
 
+      const provider = (info.provider as OtpProvider) || 'SNS';
+      if (provider === 'FIREBASE') {
+        // The backend deliberately sends nothing in Firebase mode; the device
+        // owns the SMS exchange. Fail loudly rather than show a code box that
+        // can never be satisfied.
+        throw new AuthError(
+          'GENERIC',
+          'Firebase mode needs @react-native-firebase/auth wired into the app — see docs/OTP-PROVIDERS.md',
+        );
+      }
+
       const next: ChallengeState = {
         phone: e164Phone,
         destination: info.destination || e164Phone,
+        provider,
         requestedAt: Date.now(),
       };
       if (mounted.current) setChallenge(next);

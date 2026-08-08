@@ -16,6 +16,21 @@ Read this before your first real customer tries to sign in.
 | Monthly spend limit | **USD 50** |
 | Registered origination identities | **none** |
 
+## Cognito's built-in OTP does not avoid this
+
+Worth stating plainly, because it is the obvious thing to try: switching from
+this app's custom SMS to Cognito's own phone-verification SMS **changes nothing
+about delivery**. [Cognito sends through Amazon SNS and, indirectly, AWS End
+User Messaging SMS](https://docs.aws.amazon.com/cognito/latest/developerguide/user-pool-sms-settings.html)
+— the same pipeline, the same origination identities, the same per-country
+carrier rules. AWS states the destination-country requirements are identical for
+both. There is no route where an OTP is exempt because it is "only a
+verification code".
+
+What you would lose by switching: the custom message text, the resend cooldown,
+the hourly cap, the retry-without-resending behaviour, and the structured
+delivery logs. What you would gain: nothing. Keep the current design.
+
 ## The one thing left to do: register a Sender ID
 
 Qatar (Ooredoo and Vodafone Qatar) will not deliver A2P SMS from an
@@ -24,18 +39,30 @@ you get a `MessageId` — but the message is dropped at the carrier and the
 customer never sees a code. This is the single most likely cause of "the code
 never arrived".
 
-1. AWS Console → **Amazon SNS** → *Text messaging (SMS)* → **Sender IDs** →
-   *Request sender ID*.
+Since January 2025 this is **self-service** — it is no longer a support case.
+Qatar is one of the countries covered by
+[self-service sender ID registration](https://aws.amazon.com/about-aws/whats-new/2025/01/aws-end-user-messaging-self-service-id-registration).
+
+1. AWS Console → **AWS End User Messaging SMS** → *Sender IDs* →
+   [**Request sender ID**](https://docs.aws.amazon.com/sms-voice/latest/userguide/sender-id-request.html),
+   then complete the Qatar registration form.
 2. Country **Qatar**, Sender ID **`STARS`** (up to 11 characters, letters and
    digits, no spaces).
-3. Fill in the company details and give a sample message. Use the exact template
-   the app sends:
+3. Give a sample message. Use the exact template the app sends:
 
    ```
    Stars: 123456 is your verification code. It expires in 5 minutes. Do not share this code with anyone.
    ```
 
-4. Approval typically takes a few business days.
+### Two Qatar-specific rules
+
+Per the [Qatar registration requirements](https://docs.aws.amazon.com/sms-voice/latest/userguide/registrations-qatar.html):
+
+- **Transactional content only** — promotional messages are disallowed. A
+  one-time verification code is transactional, so this app qualifies.
+- **If your company is registered in Qatar**, you must upload a valid **trade
+  licence issued by Qatari authorities**. Have that PDF ready before you start;
+  it is the item that most often stalls the form.
 
 ### Turning it on once approved
 

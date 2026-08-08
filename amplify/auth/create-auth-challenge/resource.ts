@@ -1,12 +1,13 @@
 import { defineFunction } from '@aws-amplify/backend';
+import { otpEnvironment } from '../otp-config';
 
 /**
- * Generates the one-time code and delivers it over SMS with Amazon SNS.
+ * Issues the one-time code.
  *
- * `SMS_SENDER_ID` is wired from backend.ts. Qatar (and most GCC networks) only
- * deliver SMS from a pre-registered alphanumeric Sender ID — leaving it empty
- * makes SNS fall back to the account default, which is the right behaviour while
- * registration is still pending.
+ * Which provider delivers it is decided in `amplify/auth/otp-config.ts` — see
+ * that file to switch between AWS SNS, Twilio Verify and Firebase. Only the
+ * delivery step changes; groups, routing and every authorization rule stay the
+ * same whichever provider is active.
  */
 export const createAuthChallenge = defineFunction({
   name: 'create-auth-challenge',
@@ -14,8 +15,10 @@ export const createAuthChallenge = defineFunction({
   runtime: 20,
   timeoutSeconds: 20,
   environment: {
+    ...otpEnvironment,
     APP_NAME: 'Stars',
-    SMS_SENDER_ID: '',
+    // Applies to every provider that sends on our behalf, and is what stops an
+    // open sign-in screen from being used to run up an SMS bill.
     OTP_TTL_SECONDS: '300',
     RESEND_COOLDOWN_SECONDS: '45',
     MAX_SMS_PER_HOUR: '5',

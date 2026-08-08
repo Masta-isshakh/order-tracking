@@ -4,6 +4,9 @@ import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { maskPhone, normalizePhone } from '../../shared/phone';
+import { log, resolveProvider } from '../../shared/otp/types';
+import { isTwilioConfigured, startVerification } from '../../shared/otp/twilio';
+import { isFirebaseConfigured } from '../../shared/otp/firebase';
 
 const REGION = process.env.AWS_REGION ?? 'ap-south-1';
 const sns = new SNSClient({ region: REGION });
@@ -19,8 +22,11 @@ const COOLDOWN_MS = Number(process.env.RESEND_COOLDOWN_SECONDS ?? 45) * 1000;
 const MAX_SMS_PER_HOUR = Number(process.env.MAX_SMS_PER_HOUR ?? 5);
 const HOUR_MS = 60 * 60 * 1000;
 
+const TRIGGER = 'createAuthChallenge';
+
 type OtpRecord = {
   phone: string;
+  /** Empty for providers that own the code themselves (Twilio, Firebase). */
   code: string;
   expiresAt: number;
   lastSentAt: number;
@@ -32,20 +38,13 @@ type OtpRecord = {
 /** Cryptographically strong 6-digit code, zero-padded so "004821" stays 6 chars. */
 const generateCode = (): string => String(randomInt(0, 1_000_000)).padStart(6, '0');
 
-const log = (level: 'INFO' | 'WARN' | 'ERROR', message: string, extra: Record<string, unknown> = {}) => {
-  // Phone numbers are always masked before they reach CloudWatch.
-  console[level === 'ERROR' ? 'error' : level === 'WARN' ? 'warn' : 'log'](
-    JSON.stringify({ level, trigger: 'createAuthChallenge', message, ...extra }),
-  );
-};
-
 const readRecord = async (phone: string): Promise<OtpRecord | null> => {
   if (!TABLE) return null;
   try {
     const res = await ddb.send(new GetCommand({ TableName: TABLE, Key: { phone }, ConsistentRead: true }));
     return (res.Item as OtpRecord | undefined) ?? null;
   } catch (err) {
-    log('ERROR', 'otp_table_read_failed', { error: String(err) });
+    log('ERROR', TRIGGER, 'otp_table_read_failed', { error: String(err) });
     return null;
   }
 };
@@ -55,11 +54,11 @@ const writeRecord = async (record: OtpRecord): Promise<void> => {
   try {
     await ddb.send(new PutCommand({ TableName: TABLE, Item: record }));
   } catch (err) {
-    log('ERROR', 'otp_table_write_failed', { error: String(err) });
+    log('ERROR', TRIGGER, 'otp_table_write_failed', { error: String(err) });
   }
 };
 
-const sendSms = async (phone: string, code: string): Promise<string | null> => {
+const sendViaSns = async (phone: string, code: string): Promise<string | null> => {
   // GSM-7 only, single 160-char segment: no emoji, no Arabic, no curly quotes.
   const body = `${APP_NAME}: ${code} is your verification code. It expires in ${Math.round(
     OTP_TTL_MS / 60000,
@@ -76,58 +75,175 @@ const sendSms = async (phone: string, code: string): Promise<string | null> => {
   return res.MessageId ?? null;
 };
 
+/** Marks the challenge unanswerable so a failed delivery can never be guessed past. */
+const deadChallenge = (
+  event: Parameters<CreateAuthChallengeTriggerHandler>[0],
+  destination: string,
+  flag: 'deliveryFailed' | 'throttled' | 'unavailable',
+  metadata: string,
+) => {
+  event.response.publicChallengeParameters = {
+    destination,
+    resent: 'false',
+    [flag]: 'true',
+  };
+  event.response.privateChallengeParameters = {
+    answer: `${flag}-${randomInt(1e12)}`,
+    expiresAt: '0',
+    provider: 'NONE',
+  };
+  event.response.challengeMetadata = metadata;
+  return event;
+};
+
 export const handler: CreateAuthChallengeTriggerHandler = async (event) => {
   const now = Date.now();
+  const provider = resolveProvider();
 
-  // defineAuthChallenge already fails unknown users, but Cognito can still invoke
-  // this trigger. Answer with an unguessable value so verification can never pass.
-  const rawPhone = event.request.userAttributes?.phone_number;
-  const phone = normalizePhone(rawPhone);
+  const phone = normalizePhone(event.request.userAttributes?.phone_number);
   if (event.request.userNotFound || !phone) {
-    log('WARN', 'challenge_for_unknown_user');
-    event.response.publicChallengeParameters = { destination: '', resent: 'false' };
-    event.response.privateChallengeParameters = { answer: `unavailable-${randomInt(1e12)}`, expiresAt: '0' };
-    event.response.challengeMetadata = 'SMS_OTP_UNAVAILABLE';
-    return event;
+    log('WARN', TRIGGER, 'challenge_for_unknown_user');
+    return deadChallenge(event, '', 'unavailable', 'OTP_UNAVAILABLE');
   }
 
   const masked = maskPhone(phone);
+
+  /* ------------------------------------------------------------------ *
+   * Firebase: the device performs the whole SMS exchange itself and
+   * answers with an ID token. Nothing to send, nothing to store.
+   * ------------------------------------------------------------------ */
+  if (provider === 'FIREBASE') {
+    if (!isFirebaseConfigured()) {
+      log('ERROR', TRIGGER, 'firebase_not_configured', { destination: masked });
+      return deadChallenge(event, masked, 'deliveryFailed', 'OTP_FIREBASE_UNCONFIGURED');
+    }
+    log('INFO', TRIGGER, 'firebase_challenge_issued', { destination: masked });
+    event.response.publicChallengeParameters = {
+      destination: masked,
+      provider: 'FIREBASE',
+      resent: 'false',
+    };
+    event.response.privateChallengeParameters = { provider: 'FIREBASE', phone, expiresAt: '1' };
+    event.response.challengeMetadata = 'OTP_FIREBASE';
+    return event;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Throttling applies to every provider that sends on our behalf. It is
+   * what stops an open sign-in screen being used to run up an SMS bill.
+   * ------------------------------------------------------------------ */
   const existing = await readRecord(phone);
-  const hasLiveCode = !!existing && existing.expiresAt > now;
-
-  // Re-serving an existing code covers two cases at once:
-  //  - the user typed a wrong code and defineAuthChallenge asked for another round
-  //  - the user tapped "resend" inside the cooldown window
-  // Neither should burn another SMS, and both must keep the code they already hold.
   const withinCooldown = !!existing && now - existing.lastSentAt < COOLDOWN_MS;
-
-  const windowStart = existing && now - existing.windowStart < HOUR_MS ? existing.windowStart : now;
-  const sendCount = existing && now - existing.windowStart < HOUR_MS ? existing.sendCount : 0;
+  const sameWindow = !!existing && now - existing.windowStart < HOUR_MS;
+  const windowStart = sameWindow ? existing!.windowStart : now;
+  const sendCount = sameWindow ? existing!.sendCount : 0;
   const rateLimited = sendCount >= MAX_SMS_PER_HOUR;
+  const liveVerification = !!existing && existing.expiresAt > now;
 
+  /* ------------------------------------------------------------------ *
+   * Twilio Verify: Twilio generates, delivers and later checks the code.
+   * We never hold it, so verification is an API call, not a compare.
+   * ------------------------------------------------------------------ */
+  if (provider === 'TWILIO') {
+    if (!isTwilioConfigured()) {
+      log('ERROR', TRIGGER, 'twilio_not_configured', { destination: masked });
+      return deadChallenge(event, masked, 'deliveryFailed', 'OTP_TWILIO_UNCONFIGURED');
+    }
+
+    // A retry (wrong digit) or an early resend must not trigger a second SMS —
+    // the code the user already holds is still live on Twilio's side.
+    if (liveVerification && (withinCooldown || rateLimited)) {
+      log('INFO', TRIGGER, rateLimited ? 'sms_suppressed_rate_limited' : 'sms_suppressed_cooldown', {
+        destination: masked,
+        sendCount,
+        provider,
+      });
+      event.response.publicChallengeParameters = {
+        destination: masked,
+        provider: 'TWILIO',
+        resent: 'false',
+        expiresAt: String(existing!.expiresAt),
+      };
+      event.response.privateChallengeParameters = {
+        provider: 'TWILIO',
+        phone,
+        expiresAt: String(existing!.expiresAt),
+      };
+      event.response.challengeMetadata = 'OTP_TWILIO';
+      return event;
+    }
+
+    if (rateLimited) {
+      log('WARN', TRIGGER, 'sms_blocked_rate_limited', { destination: masked, sendCount });
+      return deadChallenge(event, masked, 'throttled', 'OTP_THROTTLED');
+    }
+
+    const outcome = await startVerification(phone);
+    if (outcome.status === 'FAILED') {
+      log('ERROR', TRIGGER, 'twilio_send_failed', { destination: masked, reason: outcome.reason });
+      return deadChallenge(event, masked, 'deliveryFailed', 'OTP_TWILIO_SEND_FAILED');
+    }
+    if (outcome.status === 'SUPPRESSED') {
+      log('WARN', TRIGGER, 'twilio_rate_limited', { destination: masked });
+      return deadChallenge(event, masked, 'throttled', 'OTP_THROTTLED');
+    }
+
+    // Twilio's default verification lifetime is 10 minutes.
+    const expiresAt = now + 10 * 60 * 1000;
+    await writeRecord({
+      phone,
+      code: '',
+      expiresAt,
+      lastSentAt: now,
+      sendCount: sendCount + 1,
+      windowStart,
+      ttl: Math.floor((expiresAt + HOUR_MS) / 1000),
+    });
+
+    log('INFO', TRIGGER, 'sms_sent', {
+      destination: masked,
+      provider,
+      reference: outcome.reference,
+      sendCount: sendCount + 1,
+    });
+
+    event.response.publicChallengeParameters = {
+      destination: masked,
+      provider: 'TWILIO',
+      resent: 'true',
+      expiresAt: String(expiresAt),
+    };
+    event.response.privateChallengeParameters = {
+      provider: 'TWILIO',
+      phone,
+      expiresAt: String(expiresAt),
+    };
+    event.response.challengeMetadata = 'OTP_TWILIO';
+    return event;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * SNS: we generate the code, store it, and publish it ourselves.
+   * ------------------------------------------------------------------ */
   let code: string;
   let expiresAt: number;
   let lastSentAt: number;
   let nextSendCount: number;
   let resent = false;
 
-  if (hasLiveCode && (withinCooldown || rateLimited)) {
+  if (liveVerification && existing!.code && (withinCooldown || rateLimited)) {
     code = existing!.code;
     expiresAt = existing!.expiresAt;
     lastSentAt = existing!.lastSentAt;
     nextSendCount = sendCount;
-    log('INFO', rateLimited ? 'sms_suppressed_rate_limited' : 'sms_suppressed_cooldown', {
+    log('INFO', TRIGGER, rateLimited ? 'sms_suppressed_rate_limited' : 'sms_suppressed_cooldown', {
       destination: masked,
       sendCount,
+      provider,
     });
   } else if (rateLimited) {
-    // No live code and the hourly budget is gone: block without sending. The user
-    // sees a generic failure; the code path is logged for support.
-    log('WARN', 'sms_blocked_rate_limited', { destination: masked, sendCount });
-    event.response.publicChallengeParameters = { destination: masked, resent: 'false', throttled: 'true' };
-    event.response.privateChallengeParameters = { answer: `blocked-${randomInt(1e12)}`, expiresAt: '0' };
-    event.response.challengeMetadata = 'SMS_OTP_THROTTLED';
-    return event;
+    log('WARN', TRIGGER, 'sms_blocked_rate_limited', { destination: masked, sendCount });
+    return deadChallenge(event, masked, 'throttled', 'OTP_THROTTLED');
   } else {
     code = generateCode();
     expiresAt = now + OTP_TTL_MS;
@@ -135,17 +251,19 @@ export const handler: CreateAuthChallengeTriggerHandler = async (event) => {
     nextSendCount = sendCount + 1;
     resent = true;
     try {
-      const messageId = await sendSms(phone, code);
-      log('INFO', 'sms_sent', { destination: masked, messageId, sendCount: nextSendCount });
+      const messageId = await sendViaSns(phone, code);
+      log('INFO', TRIGGER, 'sms_sent', {
+        destination: masked,
+        provider,
+        messageId,
+        sendCount: nextSendCount,
+      });
     } catch (err) {
-      // Surface the real reason in CloudWatch (unregistered Sender ID, spend limit,
-      // opt-out list...) but never fail the trigger: a thrown error here turns into
-      // an opaque "unexpected error" on the device.
-      log('ERROR', 'sms_send_failed', { destination: masked, error: String(err) });
-      event.response.publicChallengeParameters = { destination: masked, resent: 'false', deliveryFailed: 'true' };
-      event.response.privateChallengeParameters = { answer: `undelivered-${randomInt(1e12)}`, expiresAt: '0' };
-      event.response.challengeMetadata = 'SMS_OTP_SEND_FAILED';
-      return event;
+      // Surface the real reason in CloudWatch (unregistered Sender ID, spend
+      // limit, opt-out list...) but never throw: a thrown error here reaches the
+      // device as an opaque "unexpected error".
+      log('ERROR', TRIGGER, 'sms_send_failed', { destination: masked, error: String(err) });
+      return deadChallenge(event, masked, 'deliveryFailed', 'OTP_SNS_SEND_FAILED');
     }
   }
 
@@ -159,13 +277,18 @@ export const handler: CreateAuthChallengeTriggerHandler = async (event) => {
     ttl: Math.floor((expiresAt + HOUR_MS) / 1000),
   });
 
-  // publicChallengeParameters reach the device — only ever put non-secret data here.
+  // publicChallengeParameters reach the device — only non-secret data here.
   event.response.publicChallengeParameters = {
     destination: masked,
+    provider: 'SNS',
     resent: String(resent),
     expiresAt: String(expiresAt),
   };
-  event.response.privateChallengeParameters = { answer: code, expiresAt: String(expiresAt) };
-  event.response.challengeMetadata = 'SMS_OTP';
+  event.response.privateChallengeParameters = {
+    answer: code,
+    expiresAt: String(expiresAt),
+    provider: 'SNS',
+  };
+  event.response.challengeMetadata = 'OTP_SNS';
   return event;
 };
