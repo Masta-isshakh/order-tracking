@@ -116,6 +116,50 @@ Redeploy, then `node scripts/test-otp-provider.mjs +974XXXXXXXX`.
 
 ---
 
+## Working while a provider's compliance review is pending
+
+Every SMS provider gates production sending behind business verification —
+Twilio behind an approved Primary Compliance Profile, AWS behind a registered
+Sender ID. Neither is something the app can route around, and neither should
+stop you building.
+
+Two ways to keep going. Use both.
+
+### 1. Verify your team's numbers (real SMS, no code change)
+
+Twilio delivers to any number you add as a Verified Caller ID, even before the
+compliance profile clears. Add yourself and each supervisor at
+<https://console.twilio.com/us1/develop/phone-numbers/manage/verified>.
+
+That is your whole staff running the real app, with real codes, today. Customers
+come online the day the profile is approved — no code change, nothing to
+migrate, because their accounts already exist in the CUSTOMER group.
+
+### 2. DEV mode (no SMS at all)
+
+For demos, or to onboard testers without verifying each number, set
+`OTP_PROVIDER = 'DEV'` in [`otp-config.ts`](../amplify/auth/otp-config.ts) and
+redeploy. The backend issues a real code, sends nothing, and returns it so the
+verify screen can display it on a red banner.
+
+**This is not weaker security — it is none.** Anyone who knows a registered
+number can sign in as that person. Three things make it hard to ship by
+accident:
+
+- `npm run check:backend` **fails** while DEV is active
+- Every challenge logs at ERROR level
+- The verify screen shows an unmissable red warning
+
+Switch back with one line the moment your provider is approved:
+
+```ts
+export const OTP_PROVIDER = 'TWILIO';   // or 'SNS'
+```
+
+Nothing else changes. Groups, workspace routing and every authorization rule are
+independent of how the code is delivered — which is the whole point of the
+provider switch.
+
 ## Option C — Firebase Phone Auth
 
 The backend is **complete**: `verifyAuthChallenge` validates the Firebase ID

@@ -199,6 +199,7 @@ The log line carries Twilio's numeric code, e.g.
 
 | Code in the log | What it means | Fix |
 | --- | --- | --- |
+| `code=21608` | **Trial restriction** — can only text numbers verified in the console | See below |
 | `code=21408` | Qatar not enabled for your account | Redo Step 2 |
 | `code=60410` | Twilio blocked the destination | Geo permissions, or contact Twilio support |
 | `code=20003` | Bad credentials | Re-check the Account SID, re-run Step 5 |
@@ -209,7 +210,61 @@ The log line carries Twilio's numeric code, e.g.
 | `twilio_rate_limited` / `code=60203` | Too many sends to this number | Wait 10 minutes |
 | `sms_sent` but no SMS on the phone | Twilio accepted it, the carrier dropped it | **This is the Qatar Sender ID case — see below** |
 
-The last row is the important one. `sms_sent` means Twilio took the message and
+### About `21608` — the trial trap
+
+This one is genuinely confusing, and the console actively misleads you:
+
+- The dashboard shows a balance and *"Now that you're upgraded"*
+- Twilio's own Accounts API reports `type: "Full"`
+- **Yet sends still fail with 21608**, the trial-only error
+
+Do not trust the dashboard or the API `type` field. The authoritative signal is
+whether a send succeeds. There are two fixes, and you need both eventually:
+
+**To unblock testing right now** — verify the one number you are testing with:
+
+1. <https://console.twilio.com/us1/develop/phone-numbers/manage/verified>
+2. **Add a new Caller ID** → enter the number in full (`+974…`)
+3. Twilio calls or texts a validation code — enter it
+4. Re-run `node scripts/probe-delivery.mjs +974…`
+
+**Before real customers** — you cannot verify every customer's phone. And here is
+the part no error message tells you:
+
+> **21608 on a fully paid account means your Primary Compliance Profile is not
+> approved.** Twilio keeps trial-style restrictions in place — regardless of
+> billing status, balance, or `type: "Full"` — until the business behind the
+> account has been verified in Trust Hub.
+
+This was confirmed by Twilio support on this account: PAYG, card attached,
+`status: active`, `type: Full`, balance in hand — and still 21608, purely
+because the compliance profile was incomplete.
+
+### Completing the Primary Compliance Profile
+
+1. <https://console.twilio.com/us1/account/trust-hub/customer-profiles>
+2. Open (or create) the **Primary Customer Profile** and complete every field:
+   - Legal business name, exactly as registered
+   - Business registration / Commercial Registration (CR) number
+   - Registered business address
+   - Business website (Twilio does check this — see the note below)
+   - Business type and industry
+   - An authorised representative: full name, job title, email, phone
+3. **Submit for review.** Approval usually takes 1–3 business days.
+
+Once approved the restriction lifts and Verify reaches any number.
+
+> **Have a website before you start.** Twilio requires a working business URL
+> and reviewers do visit it. A single landing page with the company name,
+> services and contact details is enough, but an empty or missing site is the
+> most common reason a profile is rejected and has to be resubmitted.
+
+None of this effort is wasted if you later move to AWS: a Qatar Sender ID
+registration asks for the same trade licence and business details.
+
+### The carrier case
+
+`sms_sent` in the log with nothing on the handset means Twilio took the message and
 Ooredoo/Vodafone discarded it. At that point you have two choices, and I would
 pick the second:
 
@@ -275,5 +330,20 @@ Whichever provider is active:
 - A failed delivery produces an unanswerable challenge, not a silent hang.
 - A used code is burned and cannot be replayed.
 
-Run `npm run test:all` after any provider change to confirm all 73 checks still
-pass.
+### A note on the test suite
+
+`npm run test:auth` and `npm run test:data` sign in unattended by reading the
+issued code out of DynamoDB — which only works on **SNS**, because Twilio and
+Firebase keep the code on their own servers by design. While `OTP_PROVIDER` is
+`'TWILIO'` those two scripts stop with an explanation rather than a confusing
+failure.
+
+So:
+
+| While on | Use |
+| --- | --- |
+| `TWILIO` | `npm run check:otp -- +974…` (you type the code) |
+| `SNS` | `npm run test:all` — the full 73 checks |
+
+`npm run typecheck`, `npm run check:backend` and `npm run test:firebase` are
+provider-independent and always run.

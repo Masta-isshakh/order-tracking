@@ -110,6 +110,17 @@ export default function VerifyScreen() {
           {t(d.auth.verifySubtitle, { phone: destination })}
         </Text>
 
+        {/* DEV mode only: the backend sent no SMS and handed the code back.
+            Deliberately loud — this build has no real sign-in security. */}
+        {challenge?.devCode ? (
+          <Notice
+            tone="danger"
+            icon="warning-outline"
+            title={`DEV MODE — no SMS sent. Code: ${challenge.devCode}`}
+            body="Sign-in is unauthenticated in this build: anyone who knows a registered number can sign in as them. Never ship it."
+          />
+        ) : null}
+
         <OtpField
           value={code}
           onChange={(next) => {

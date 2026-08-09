@@ -1,0 +1,40 @@
+# What NOT to upload to EAS Build.
+#
+# EAS falls back to .gitignore when this file is absent — and .gitignore excludes
+# amplify_outputs.json, which the app imports at startup. Without this file the
+# build succeeds and then crashes on launch with "Cannot find module
+# amplify_outputs.json". That is the single reason this file exists.
+
+node_modules/
+.git/
+.expo/
+.amplify/
+dist/
+web-build/
+.expo-export-check/
+.expo-final-check/
+.expo-verify/
+
+# Generated native projects — EAS runs prebuild itself.
+/ios
+/android
+
+# Nothing here ships in the app bundle.
+docs/
+scripts/
+secrets/
+*.tsbuildinfo
+.metro-health-check*
+npm-debug.*
+
+# Credentials must never leave the machine.
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# NOTE: amplify/ and shared/ are deliberately NOT ignored. The app imports real
+# code from them (amplify/shared/phone.ts, shared/domain.ts, shared/orders.ts),
+# so excluding them breaks the bundle.

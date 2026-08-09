@@ -3,10 +3,14 @@ import type { CreateAuthChallengeTriggerHandler } from 'aws-lambda';
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { env } from '$amplify/env/create-auth-challenge';
 import { maskPhone, normalizePhone } from '../../shared/phone';
 import { log, resolveProvider } from '../../shared/otp/types';
-import { isTwilioConfigured, startVerification } from '../../shared/otp/twilio';
+import { isTwilioConfigured, startVerification, twilioCredentials } from '../../shared/otp/twilio';
 import { isFirebaseConfigured } from '../../shared/otp/firebase';
+
+// Secrets only resolve through this generated module — see twilioCredentials().
+const twilio = twilioCredentials(env);
 
 const REGION = process.env.AWS_REGION ?? 'ap-south-1';
 const sns = new SNSClient({ region: REGION });
@@ -84,6 +88,9 @@ const deadChallenge = (
 ) => {
   event.response.publicChallengeParameters = {
     destination,
+    // Report the provider even on failure, so a diagnostic can tell "the
+    // configured provider refused" apart from "the wrong provider ran".
+    provider: resolveProvider(),
     resent: 'false',
     [flag]: 'true',
   };
@@ -129,6 +136,41 @@ export const handler: CreateAuthChallengeTriggerHandler = async (event) => {
   }
 
   /* ------------------------------------------------------------------ *
+   * DEV: issue a code but send nothing, and hand it back to the device so
+   * it can be shown on screen. Lets the whole app be built and demonstrated
+   * while a provider's compliance review is pending.
+   *
+   * Anyone who knows a registered number can sign in as them, so this must
+   * never reach real customers — scripts/check-backend.mjs fails while it is
+   * active, and the app shows an unmissable banner.
+   * ------------------------------------------------------------------ */
+  if (provider === 'DEV') {
+    const code = generateCode();
+    const expiresAt = now + OTP_TTL_MS;
+
+    log('ERROR', TRIGGER, 'DEV_MODE_NO_SMS_SENT_CODE_IS_PUBLIC', {
+      destination: masked,
+      warning: 'sign-in is unauthenticated while OTP_PROVIDER=DEV',
+    });
+
+    event.response.publicChallengeParameters = {
+      destination: masked,
+      provider: 'DEV',
+      resent: 'true',
+      expiresAt: String(expiresAt),
+      // Deliberately public — this is what the device displays.
+      devCode: code,
+    };
+    event.response.privateChallengeParameters = {
+      answer: code,
+      expiresAt: String(expiresAt),
+      provider: 'DEV',
+    };
+    event.response.challengeMetadata = 'OTP_DEV';
+    return event;
+  }
+
+  /* ------------------------------------------------------------------ *
    * Throttling applies to every provider that sends on our behalf. It is
    * what stops an open sign-in screen being used to run up an SMS bill.
    * ------------------------------------------------------------------ */
@@ -145,7 +187,7 @@ export const handler: CreateAuthChallengeTriggerHandler = async (event) => {
    * We never hold it, so verification is an API call, not a compare.
    * ------------------------------------------------------------------ */
   if (provider === 'TWILIO') {
-    if (!isTwilioConfigured()) {
+    if (!isTwilioConfigured(twilio)) {
       log('ERROR', TRIGGER, 'twilio_not_configured', { destination: masked });
       return deadChallenge(event, masked, 'deliveryFailed', 'OTP_TWILIO_UNCONFIGURED');
     }
@@ -178,7 +220,7 @@ export const handler: CreateAuthChallengeTriggerHandler = async (event) => {
       return deadChallenge(event, masked, 'throttled', 'OTP_THROTTLED');
     }
 
-    const outcome = await startVerification(phone);
+    const outcome = await startVerification(twilio, phone);
     if (outcome.status === 'FAILED') {
       log('ERROR', TRIGGER, 'twilio_send_failed', { destination: masked, reason: outcome.reason });
       return deadChallenge(event, masked, 'deliveryFailed', 'OTP_TWILIO_SEND_FAILED');

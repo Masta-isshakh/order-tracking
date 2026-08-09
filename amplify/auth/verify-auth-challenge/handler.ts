@@ -1,10 +1,14 @@
 import type { VerifyAuthChallengeResponseTriggerHandler } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { env } from '$amplify/env/verify-auth-challenge';
 import { maskPhone, normalizePhone, safeCompare } from '../../shared/phone';
 import { log, resolveProvider } from '../../shared/otp/types';
-import { checkVerification } from '../../shared/otp/twilio';
+import { checkVerification, twilioCredentials } from '../../shared/otp/twilio';
 import { verifyFirebaseIdToken } from '../../shared/otp/firebase';
+
+// Secrets only resolve through this generated module — see twilioCredentials().
+const twilio = twilioCredentials(env);
 
 const REGION = process.env.AWS_REGION ?? 'ap-south-1';
 const TABLE = process.env.OTP_TABLE_NAME ?? '';
@@ -57,12 +61,12 @@ export const handler: VerifyAuthChallengeResponseTriggerHandler = async (event) 
     if (digits.length !== 6 || !phone) {
       reason = 'malformed code';
     } else {
-      const outcome = await checkVerification(phone, digits);
+      const outcome = await checkVerification(twilio, phone, digits);
       correct = outcome.correct;
       reason = outcome.reason;
     }
   } else {
-    // SNS: we issued the code, so we compare it ourselves.
+    // SNS and DEV both issue the code themselves, so we compare it here.
     const digits = answer.replace(/\D/g, '');
     const expected = params.answer ?? '';
     const expiresAt = Number(params.expiresAt ?? 0);

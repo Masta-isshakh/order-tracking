@@ -24,14 +24,33 @@ import { secret } from '@aws-amplify/backend';
  * ---------------------------------------------------------------------------
  */
 
-/** 'SNS' | 'TWILIO' | 'FIREBASE' */
-export const OTP_PROVIDER = 'SNS';
+/**
+ * 'SNS' | 'TWILIO' | 'FIREBASE' | 'DEV'
+ *
+ * 'DEV' sends no SMS and shows the code on screen. Use it to build and demo the
+ * three workspaces while a provider's compliance review is pending. It is NOT a
+ * weaker login — it is no login at all, since anyone who knows a registered
+ * number can sign in as them. `npm run check:backend` fails while it is active.
+ */
+export const OTP_PROVIDER = 'TWILIO';
 
 /** Qatar requires a registered Sender ID; blank uses the account default. */
 export const SMS_SENDER_ID = '';
 
 /** Starts with "AC". Not a credential — Twilio uses it as the username. */
 export const TWILIO_ACCOUNT_SID = '';
+
+/**
+ * Optional. Starts with "SK".
+ *
+ * Set this only if you created an **API key** instead of using the account auth
+ * token. Twilio authenticates an API key as `SK…` + its Secret, so pairing an
+ * API key Secret with the Account SID fails with 20003 — a very easy mistake,
+ * because both values are 32 characters and live on the same console page.
+ *
+ * Leave blank to authenticate as the account with TWILIO_AUTH_TOKEN.
+ */
+export const TWILIO_API_KEY_SID = '';
 
 /** Starts with "VA". The Verify service, not the account. */
 export const TWILIO_VERIFY_SERVICE_SID = '';
@@ -44,6 +63,7 @@ export const otpEnvironment = {
   OTP_PROVIDER,
   SMS_SENDER_ID,
   TWILIO_ACCOUNT_SID,
+  TWILIO_API_KEY_SID,
   TWILIO_VERIFY_SERVICE_SID,
   TWILIO_AUTH_TOKEN: secret('TWILIO_AUTH_TOKEN'),
   FIREBASE_PROJECT_ID,

@@ -5,8 +5,19 @@
  * identical across providers — only the "who delivers and checks the code" step
  * swaps. That is why this is an env-var switch rather than a rewrite.
  */
-export const OTP_PROVIDERS = ['SNS', 'TWILIO', 'FIREBASE'] as const;
+export const OTP_PROVIDERS = ['SNS', 'TWILIO', 'FIREBASE', 'DEV'] as const;
 export type OtpProvider = (typeof OTP_PROVIDERS)[number];
+
+/**
+ * DEV sends nothing and shows the code on screen. It exists so the three
+ * workspaces can be built and demonstrated while SMS delivery is blocked by a
+ * provider's compliance review.
+ *
+ * It is not a lesser form of security — it is NO security, because anyone who
+ * knows a registered phone number can sign in as that person. `check-backend`
+ * fails hard while it is active so it can never quietly reach real customers.
+ */
+export const isInsecureProvider = (provider: OtpProvider): boolean => provider === 'DEV';
 
 export const resolveProvider = (): OtpProvider => {
   const raw = (process.env.OTP_PROVIDER ?? 'SNS').toUpperCase();

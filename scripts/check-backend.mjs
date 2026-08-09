@@ -15,6 +15,11 @@ import {
   DescribeUserPoolCommand,
   ListUsersCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
+import {
+  GetFunctionConfigurationCommand,
+  LambdaClient,
+  ListFunctionsCommand,
+} from '@aws-sdk/client-lambda';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outputs = JSON.parse(readFileSync(join(here, '..', 'amplify_outputs.json'), 'utf8'));
@@ -81,6 +86,35 @@ check(
   'ADMIN / SUPERVISOR / CUSTOMER groups exist',
   groups.join(', '),
 );
+
+/* The OTP provider actually running, read from the deployed Lambda. DEV mode
+   sends no SMS and returns the code to the caller, so an environment left in it
+   has no sign-in security at all — fail loudly rather than mention it in passing. */
+const lambda = new LambdaClient({ region });
+let marker;
+let createFn = null;
+do {
+  const page = await lambda.send(new ListFunctionsCommand({ Marker: marker, MaxItems: 50 }));
+  createFn =
+    (page.Functions ?? []).find((f) => f.FunctionName.toLowerCase().includes('createauthchallenge')) ??
+    null;
+  marker = page.NextMarker;
+} while (marker && !createFn);
+
+if (createFn) {
+  const fnConfig = await lambda.send(
+    new GetFunctionConfigurationCommand({ FunctionName: createFn.FunctionName }),
+  );
+  const provider = fnConfig.Environment?.Variables?.OTP_PROVIDER ?? 'SNS';
+  if (provider === 'DEV') {
+    fail(
+      'OTP provider is DEV — SIGN-IN IS UNAUTHENTICATED',
+      'set OTP_PROVIDER back to SNS or TWILIO in amplify/auth/otp-config.ts before any real customer uses this',
+    );
+  } else {
+    pass('OTP provider is a real one', provider);
+  }
+}
 
 const users = await client.send(
   new ListUsersCommand({ UserPoolId: outputs.auth.user_pool_id, Limit: 5 }),

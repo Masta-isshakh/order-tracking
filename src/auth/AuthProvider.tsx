@@ -40,7 +40,7 @@ export class AuthError extends Error {
 }
 
 /** Who is delivering and checking the code. Reported by createAuthChallenge. */
-export type OtpProvider = 'SNS' | 'TWILIO' | 'FIREBASE';
+export type OtpProvider = 'SNS' | 'TWILIO' | 'FIREBASE' | 'DEV';
 
 type ChallengeState = {
   phone: string;
@@ -52,6 +52,11 @@ type ChallengeState = {
    * flow itself and answer with an ID token.
    */
   provider: OtpProvider;
+  /**
+   * Only ever set when the backend is in DEV mode, where no SMS is sent and the
+   * code is returned for the screen to display. Null in every real deployment.
+   */
+  devCode: string | null;
   requestedAt: number;
 };
 
@@ -204,6 +209,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         phone: e164Phone,
         destination: info.destination || e164Phone,
         provider,
+        devCode: provider === 'DEV' ? (info.devCode ?? null) : null,
         requestedAt: Date.now(),
       };
       if (mounted.current) setChallenge(next);

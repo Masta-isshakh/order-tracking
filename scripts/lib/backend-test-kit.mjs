@@ -111,7 +111,20 @@ export const signInWithOtp = async (phone) => {
     new GetCommand({ TableName: OTP_TABLE, Key: { phone }, ConsistentRead: true }),
   );
   const code = record.Item?.code;
-  if (!code) throw new Error(`no OTP was issued for ${phone}`);
+  if (!code) {
+    // Only SNS stores the code where a test can read it. Twilio and Firebase
+    // hold it themselves by design, so unattended sign-in is impossible there.
+    const provider = start.ChallengeParameters?.provider ?? 'unknown';
+    if (provider !== 'SNS') {
+      throw new Error(
+        `these tests need OTP_PROVIDER='SNS' (currently '${provider}'). ` +
+          `${provider} keeps the code on its own servers, so a script cannot read it. ` +
+          `Set OTP_PROVIDER back to 'SNS' in amplify/auth/otp-config.ts and redeploy, ` +
+          `or use "npm run check:otp -- +974..." which asks you to type the code.`,
+      );
+    }
+    throw new Error(`no OTP was issued for ${phone}`);
+  }
 
   const done = await idp.send(
     new RespondToAuthChallengeCommand({
