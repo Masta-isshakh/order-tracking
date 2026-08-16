@@ -38,7 +38,7 @@ export const handler: VerifyAuthChallengeResponseTriggerHandler = async (event) 
   // createAuthChallenge writes expiresAt "0" whenever it could not issue a
   // challenge (delivery failure, throttle, unknown user). Those sessions must
   // never be satisfiable, whatever the user types.
-  if (params.expiresAt === '0' || issuedFor === 'NONE') {
+  if (params.expiresAt === '0' || issuedFor === 'UNAVAILABLE') {
     event.response.answerCorrect = false;
     log('WARN', TRIGGER, 'otp_rejected_dead_challenge', { destination: masked, provider: issuedFor });
     return event;
@@ -47,7 +47,13 @@ export const handler: VerifyAuthChallengeResponseTriggerHandler = async (event) 
   let correct = false;
   let reason: string | undefined;
 
-  if (issuedFor === 'FIREBASE') {
+  if (issuedFor === 'NONE') {
+    // No verification to perform. The account's existence — proven by
+    // defineAuthChallenge before this trigger ran — is the whole check.
+    correct = true;
+    reason = 'no-verification mode';
+    log('WARN', TRIGGER, 'NO_VERIFICATION_MODE_ACCEPTED_WITHOUT_A_CODE', { destination: masked });
+  } else if (issuedFor === 'FIREBASE') {
     // The answer is a Firebase ID token, not a 6-digit code.
     if (!phone) {
       reason = 'no phone on the account';

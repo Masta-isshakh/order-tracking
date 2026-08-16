@@ -19,6 +19,20 @@ web-build/
 /ios
 /android
 
+# Excluded so EAS runs `npm install` rather than `npm ci`.
+#
+# `npm ci` demands a lock file that exactly reproduces the tree, and npm cannot
+# produce one for this project: aws-cdk-lib and @aws-amplify/backend-cli pull in
+# platform-specific and bundled dependencies (@aws-cdk/toolkit-lib, cdk-from-cfn,
+# @opentelemetry/core) that never land in the lock, so `npm ci` fails on a fresh
+# clone every time. Those packages are backend tooling and play no part in the
+# app bundle.
+#
+# The tradeoff is that cloud builds resolve versions afresh rather than pinning
+# them. Everything that actually ships is pinned by exact version in
+# package.json, so the app itself is still reproducible.
+package-lock.json
+
 # Nothing here ships in the app bundle.
 docs/
 scripts/

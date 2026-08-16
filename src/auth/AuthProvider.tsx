@@ -40,7 +40,17 @@ export class AuthError extends Error {
 }
 
 /** Who is delivering and checking the code. Reported by createAuthChallenge. */
-export type OtpProvider = 'SNS' | 'TWILIO' | 'FIREBASE' | 'DEV';
+export type OtpProvider = 'SNS' | 'TWILIO' | 'FIREBASE' | 'DEV' | 'NONE';
+
+/**
+ * What happened when sign-in started.
+ *
+ * In no-verification mode there is nothing to type, so the flow finishes in one
+ * step and the caller navigates straight to the workspace.
+ */
+export type StartSignInResult =
+  | { kind: 'NEEDS_CODE'; challenge: ChallengeState }
+  | { kind: 'SIGNED_IN'; user: SignedInUser };
 
 type ChallengeState = {
   phone: string;
@@ -64,8 +74,11 @@ type AuthContextValue = {
   status: 'loading' | 'signedOut' | 'signedIn';
   user: SignedInUser | null;
   challenge: ChallengeState | null;
-  /** Sends the SMS and moves the flow to the code screen. */
-  startSignIn: (e164Phone: string) => Promise<ChallengeState>;
+  /**
+   * Begins sign-in. Resolves with the user when the backend needs no code, or
+   * with the challenge to type when it does.
+   */
+  startSignIn: (e164Phone: string) => Promise<StartSignInResult>;
   /** Verifies the 6-digit code. Resolves with the signed-in user. */
   submitCode: (code: string) => Promise<SignedInUser>;
   cancelSignIn: () => void;
@@ -168,7 +181,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return stop;
   }, [refresh]);
 
-  const startSignIn = useCallback(async (e164Phone: string): Promise<ChallengeState> => {
+  const startSignIn = useCallback(async (e164Phone: string): Promise<StartSignInResult> => {
     if (!/^\+[1-9]\d{6,14}$/.test(e164Phone)) throw new AuthError('INVALID_PHONE');
 
     // A stale session blocks a fresh challenge with UserAlreadyAuthenticatedException.
@@ -213,7 +226,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         requestedAt: Date.now(),
       };
       if (mounted.current) setChallenge(next);
-      return next;
+
+      // No-verification mode: there is nothing for the user to type, so answer
+      // the challenge here and hand back a signed-in user. The caller then goes
+      // straight to the workspace instead of showing a code screen.
+      if (info.autoConfirm === 'true' || provider === 'NONE') {
+        const { isSignedIn } = await confirmSignIn({ challengeResponse: 'no-verification' });
+        if (!isSignedIn) throw new AuthError('GENERIC', 'No-verification sign-in was refused');
+
+        const signedIn = await readSession();
+        if (!signedIn) throw new AuthError('SESSION_EXPIRED');
+
+        if (mounted.current) {
+          setUser(signedIn);
+          setStatus('signedIn');
+          setChallenge(null);
+        }
+        return { kind: 'SIGNED_IN', user: signedIn };
+      }
+
+      return { kind: 'NEEDS_CODE', challenge: next };
     } catch (err) {
       if (err instanceof AuthError) throw err;
       throw mapSignInError(err, 'start');

@@ -44,10 +44,15 @@ const PulseRing = ({ color }: { color: string }) => {
     );
   }, [progress]);
 
-  const style = useAnimatedStyle(() => ({
-    opacity: 0.45 * (1 - progress.value),
-    transform: [{ scale: 1 + progress.value * 0.85 }],
-  }));
+  // Explicit `return` rather than a concise arrow body: the Reanimated worklets
+  // Babel plugin fails to parse `() => ({ ... })` and reports a bogus
+  // "Missing semicolon" at bundle time.
+  const style = useAnimatedStyle(() => {
+    return {
+      opacity: 0.45 * (1 - progress.value),
+      transform: [{ scale: 1 + progress.value * 0.85 }],
+    };
+  });
 
   return (
     <Animated.View

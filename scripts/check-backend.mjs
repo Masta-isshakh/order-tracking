@@ -106,10 +106,10 @@ if (createFn) {
     new GetFunctionConfigurationCommand({ FunctionName: createFn.FunctionName }),
   );
   const provider = fnConfig.Environment?.Variables?.OTP_PROVIDER ?? 'SNS';
-  if (provider === 'DEV') {
+  if (provider === 'DEV' || provider === 'NONE') {
     fail(
-      'OTP provider is DEV — SIGN-IN IS UNAUTHENTICATED',
-      'set OTP_PROVIDER back to SNS or TWILIO in amplify/auth/otp-config.ts before any real customer uses this',
+      `OTP provider is ${provider} — SIGN-IN IS UNAUTHENTICATED`,
+      'anyone who knows a registered phone number can sign in as them; set OTP_PROVIDER to SNS or TWILIO in amplify/auth/otp-config.ts before real customers use this',
     );
   } else {
     pass('OTP provider is a real one', provider);

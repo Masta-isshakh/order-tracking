@@ -7,7 +7,7 @@ import { Header } from '../../src/ui/Header';
 import { Text } from '../../src/ui/Text';
 import { Button } from '../../src/ui/Button';
 import { PhoneField, type PhoneFieldValue } from '../../src/ui/PhoneField';
-import { Notice } from '../../src/ui/Feedback';
+import { EmptyState, Notice } from '../../src/ui/Feedback';
 import { usePalette } from '../../src/theme/ThemeProvider';
 import { useI18n } from '../../src/i18n/I18nProvider';
 import { AuthError, useAuth } from '../../src/auth/AuthProvider';
@@ -15,7 +15,14 @@ import { DEFAULT_COUNTRY, isLocalComplete, toE164 } from '../../src/lib/phone';
 import { radius, spacing } from '../../src/theme/tokens';
 import { authErrorMessage } from '../../src/auth/messages';
 
-/** Step 1 of sign-in: collect the number and ask the backend to text a code. */
+/**
+ * Step 1 of sign-in: collect the number.
+ *
+ * What happens next depends on the backend. With a real provider it texts a
+ * code and moves to the verify screen; in no-verification mode the number alone
+ * signs the user in and this screen sends them straight to their workspace.
+ * The screen does not need to know which — `startSignIn` reports the outcome.
+ */
 export default function PhoneScreen() {
   const router = useRouter();
   const palette = usePalette();
@@ -25,9 +32,20 @@ export default function PhoneScreen() {
 
   const [value, setValue] = useState<PhoneFieldValue>({ country: DEFAULT_COUNTRY, local: '' });
   const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const complete = isLocalComplete(value.local, value.country);
+
+  const goToWorkspace = (role: string) => {
+    if (role === 'ADMIN' || role === 'SUPERVISOR') {
+      router.replace('/(staff)/orders');
+    } else if (params.next) {
+      router.replace(params.next as never);
+    } else {
+      router.replace('/(tabs)/track');
+    }
+  };
 
   const submit = async () => {
     if (busy) return;
@@ -40,29 +58,63 @@ export default function PhoneScreen() {
     setBusy(true);
     setError(null);
     try {
-      await startSignIn(e164);
+      const result = await startSignIn(e164);
+
+      if (result.kind === 'SIGNED_IN') {
+        goToWorkspace(result.user.role);
+        return;
+      }
+
       router.push({
         pathname: '/auth/verify',
         params: { phone: e164, next: params.next ?? '' },
       });
     } catch (err) {
-      setError(authErrorMessage(err instanceof AuthError ? err.code : 'GENERIC', d));
+      const code = err instanceof AuthError ? err.code : 'GENERIC';
+      // An unregistered number is the normal case for someone who has never
+      // used the workshop, not an error worth a red banner.
+      if (code === 'NOT_REGISTERED') setNotFound(true);
+      else setError(authErrorMessage(code, d));
     } finally {
       setBusy(false);
     }
   };
 
+  if (notFound) {
+    return (
+      <Screen scroll>
+        <Header title={d.tabs.track} showBack />
+        <EmptyState
+          icon="search-outline"
+          title={d.auth.notFoundTitle}
+          body={d.auth.notFoundBody}
+          actionLabel={d.auth.notFoundRetry}
+          onAction={() => {
+            setNotFound(false);
+            setValue({ country: value.country, local: '' });
+          }}
+        />
+        <Button
+          label={d.track.emptyAction}
+          variant="ghost"
+          full
+          onPress={() => router.replace('/(tabs)/book')}
+        />
+      </Screen>
+    );
+  }
+
   return (
     <Screen scroll>
-      <Header title={d.auth.phoneTitle} showBack />
+      <Header title={d.auth.continueTitle} showBack />
 
       <View style={styles.body}>
         <View style={[styles.badge, { backgroundColor: palette.primarySoft }]}>
-          <Ionicons name="chatbubble-ellipses" size={26} color={palette.primary} />
+          <Ionicons name="phone-portrait-outline" size={26} color={palette.primary} />
         </View>
 
         <Text variant="body" tone="muted">
-          {d.auth.phoneSubtitle}
+          {d.auth.continueSubtitle}
         </Text>
 
         <PhoneField
@@ -79,7 +131,7 @@ export default function PhoneScreen() {
         {error ? <Notice tone="danger" icon="alert-circle-outline" title={error} /> : null}
 
         <Button
-          label={busy ? d.auth.sending : d.auth.sendCode}
+          label={busy ? d.common.loading : d.auth.continueAction}
           onPress={submit}
           loading={busy}
           disabled={!complete}
@@ -88,10 +140,6 @@ export default function PhoneScreen() {
           icon="arrow-forward"
           iconPosition="end"
         />
-
-        <Text variant="micro" tone="faint" align="center">
-          {d.team.phoneHint}
-        </Text>
       </View>
     </Screen>
   );

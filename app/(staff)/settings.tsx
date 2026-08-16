@@ -18,12 +18,20 @@ export default function StaffSettings() {
       <SettingsBody>
         <SettingsSection title={d.settings.workspace}>
           {user?.role === 'ADMIN' ? (
-            <SettingsRow
-              icon="business-outline"
-              label={d.settings.company}
-              value={d.settings.companyHint}
-              onPress={() => router.push('/staff/company')}
-            />
+            <>
+              <SettingsRow
+                icon="call-outline"
+                label={d.sms.title}
+                value={d.sms.subtitle}
+                onPress={() => router.push('/staff/sms-numbers')}
+              />
+              <SettingsRow
+                icon="business-outline"
+                label={d.settings.company}
+                value={d.settings.companyHint}
+                onPress={() => router.push('/staff/company')}
+              />
+            </>
           ) : null}
           <SettingsRow
             icon="storefront-outline"

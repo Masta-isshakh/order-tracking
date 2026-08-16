@@ -5,6 +5,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { env } from '$amplify/env/create-auth-challenge';
 import { maskPhone, normalizePhone } from '../../shared/phone';
+import { listGroupsForUser } from '../../shared/cognito';
 import { log, resolveProvider } from '../../shared/otp/types';
 import { isTwilioConfigured, startVerification, twilioCredentials } from '../../shared/otp/twilio';
 import { isFirebaseConfigured } from '../../shared/otp/firebase';
@@ -27,6 +28,12 @@ const MAX_SMS_PER_HOUR = Number(process.env.MAX_SMS_PER_HOUR ?? 5);
 const HOUR_MS = 60 * 60 * 1000;
 
 const TRIGGER = 'createAuthChallenge';
+
+/** Groups that must pass a real code. Everyone else signs in on the number. */
+const OTP_REQUIRED_GROUPS = (process.env.OTP_REQUIRED_GROUPS ?? 'ADMIN,SUPERVISOR')
+  .split(',')
+  .map((group) => group.trim().toUpperCase())
+  .filter(Boolean);
 
 type OtpRecord = {
   phone: string;
@@ -97,7 +104,9 @@ const deadChallenge = (
   event.response.privateChallengeParameters = {
     answer: `${flag}-${randomInt(1e12)}`,
     expiresAt: '0',
-    provider: 'NONE',
+    // Not 'NONE' — that is a real provider (no-verification mode), and reusing
+    // it here made verifyAuthChallenge reject every valid no-verification login.
+    provider: 'UNAVAILABLE',
   };
   event.response.challengeMetadata = metadata;
   return event;
@@ -116,6 +125,55 @@ export const handler: CreateAuthChallengeTriggerHandler = async (event) => {
   const masked = maskPhone(phone);
 
   /* ------------------------------------------------------------------ *
+   * Who has to prove the number?
+   *
+   * Staff hold every destructive power in the app — editing the catalog,
+   * running orders, creating other staff — so they pass a real code. A customer
+   * can only ever read their own order, so a code there would cost an SMS and
+   * add friction while protecting nothing extra.
+   *
+   * Groups are read live from Cognito rather than mirrored onto a user
+   * attribute: groups are what the authorization rules use, and a copy drifts.
+   * ------------------------------------------------------------------ */
+  if (OTP_REQUIRED_GROUPS.length > 0) {
+    let mustVerify: boolean;
+    try {
+      // Cognito passes the pool id in the event. Reading it from there rather
+      // than an injected variable is what keeps this trigger free of a circular
+      // dependency on the very pool it is attached to.
+      const groups = (await listGroupsForUser(event.userPoolId, phone)).map((group) =>
+        group.toUpperCase(),
+      );
+      mustVerify = groups.some((group) => OTP_REQUIRED_GROUPS.includes(group));
+      log('INFO', TRIGGER, mustVerify ? 'verification_required' : 'verification_skipped', {
+        destination: masked,
+        groups: groups.join(',') || '(none)',
+      });
+    } catch (err) {
+      // Fail closed: if the lookup breaks, demand a code rather than let an
+      // unknown role through unverified.
+      log('ERROR', TRIGGER, 'group_lookup_failed_requiring_code', { error: String(err) });
+      mustVerify = true;
+    }
+
+    if (!mustVerify) {
+      const expiresAt = now + OTP_TTL_MS;
+      event.response.publicChallengeParameters = {
+        destination: masked,
+        provider: 'NONE',
+        resent: 'false',
+        autoConfirm: 'true',
+      };
+      event.response.privateChallengeParameters = {
+        provider: 'NONE',
+        expiresAt: String(expiresAt),
+      };
+      event.response.challengeMetadata = 'OTP_NOT_REQUIRED';
+      return event;
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
    * Firebase: the device performs the whole SMS exchange itself and
    * answers with an ID token. Nothing to send, nothing to store.
    * ------------------------------------------------------------------ */
@@ -132,6 +190,35 @@ export const handler: CreateAuthChallengeTriggerHandler = async (event) => {
     };
     event.response.privateChallengeParameters = { provider: 'FIREBASE', phone, expiresAt: '1' };
     event.response.challengeMetadata = 'OTP_FIREBASE';
+    return event;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * NONE: identification without verification. The number alone signs the
+   * person in, so the app asks for it once and never again.
+   *
+   * Reaching this point already means the account exists — defineAuthChallenge
+   * fails unknown numbers before we get here — so this grants the workspace of
+   * a real, staff-created user and nothing more. It is still NO login: knowing
+   * someone's number is enough to become them.
+   * ------------------------------------------------------------------ */
+  if (provider === 'NONE') {
+    log('ERROR', TRIGGER, 'NO_VERIFICATION_MODE_SIGN_IN_IS_UNAUTHENTICATED', {
+      destination: masked,
+    });
+
+    event.response.publicChallengeParameters = {
+      destination: masked,
+      provider: 'NONE',
+      resent: 'false',
+      // Tells the client to answer immediately instead of showing a code box.
+      autoConfirm: 'true',
+    };
+    event.response.privateChallengeParameters = {
+      provider: 'NONE',
+      expiresAt: String(now + OTP_TTL_MS),
+    };
+    event.response.challengeMetadata = 'OTP_NONE';
     return event;
   }
 

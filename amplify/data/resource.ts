@@ -1,6 +1,7 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 import { userManager } from '../functions/user-manager/resource';
 import { submitBooking } from '../functions/submit-booking/resource';
+import { smsRegistry } from '../functions/sms-registry/resource';
 
 /**
  * Result shape returned by every Lambda-backed mutation. `ok:false` always comes
@@ -16,9 +17,19 @@ const staffResult = a.customType({
   orderNumber: a.string(),
 });
 
+/** Registry snapshot returned alongside every SMS-number operation. */
+const smsRegistryResult = a.customType({
+  ok: a.boolean().required(),
+  code: a.string(),
+  message: a.string(),
+  /** JSON: `{ inSandbox: boolean, numbers: [{ phone, status }] }`. */
+  data: a.string(),
+});
+
 const schema = a
   .schema({
     StaffResult: staffResult,
+    SmsRegistryResult: smsRegistryResult,
 
     /* ------------------------------------------------------------------ *
      * Catalog — readable by everyone (the Book a Service tab is public),
@@ -96,12 +107,15 @@ const schema = a
         allow.ownerDefinedIn('ownerSub').identityClaim('sub').to(['read']),
       ]),
 
+    /** Staff directory. Holds both supervisors and administrators. */
     SupervisorProfile: a
       .model({
         phone: a.string().required(),
         name: a.string().required(),
         email: a.string(),
         description: a.string(),
+        /** Role — 'SUPERVISOR' (default) or 'ADMIN'. Mirrors the Cognito group. */
+        role: a.string(),
         isActive: a.boolean().default(true),
         ownerSub: a.string(),
         cognitoUsername: a.string(),
@@ -293,6 +307,19 @@ const schema = a
       .authorization((allow) => [allow.group('ADMIN')])
       .handler(a.handler.function(userManager)),
 
+    /** Creates another administrator. Admin-only, by design. */
+    createAdministrator: a
+      .mutation()
+      .arguments({
+        name: a.string().required(),
+        phone: a.string().required(),
+        email: a.string(),
+        description: a.string(),
+      })
+      .returns(a.ref('StaffResult'))
+      .authorization((allow) => [allow.group('ADMIN')])
+      .handler(a.handler.function(userManager)),
+
     updateSupervisorAccess: a
       .mutation()
       .arguments({ supervisorId: a.id().required(), isActive: a.boolean().required() })
@@ -319,6 +346,40 @@ const schema = a
       .authorization((allow) => [allow.groups(['ADMIN', 'SUPERVISOR'])])
       .handler(a.handler.function(userManager)),
 
+    /* ------------------------------------------------------------------ *
+     * SMS destination registry (admin only).
+     *
+     * While the AWS account is in the SMS sandbox, SNS only delivers to
+     * numbers registered and confirmed at the account level. These let the
+     * admin manage that list from the app instead of the AWS console.
+     * ------------------------------------------------------------------ */
+    listSmsNumbers: a
+      .query()
+      .returns(a.ref('SmsRegistryResult'))
+      .authorization((allow) => [allow.group('ADMIN')])
+      .handler(a.handler.function(smsRegistry)),
+
+    registerSmsNumber: a
+      .mutation()
+      .arguments({ phone: a.string().required() })
+      .returns(a.ref('SmsRegistryResult'))
+      .authorization((allow) => [allow.group('ADMIN')])
+      .handler(a.handler.function(smsRegistry)),
+
+    confirmSmsNumber: a
+      .mutation()
+      .arguments({ phone: a.string().required(), code: a.string().required() })
+      .returns(a.ref('SmsRegistryResult'))
+      .authorization((allow) => [allow.group('ADMIN')])
+      .handler(a.handler.function(smsRegistry)),
+
+    removeSmsNumber: a
+      .mutation()
+      .arguments({ phone: a.string().required() })
+      .returns(a.ref('SmsRegistryResult'))
+      .authorization((allow) => [allow.group('ADMIN')])
+      .handler(a.handler.function(smsRegistry)),
+
     /** Public "Book a Service" submission — no sign-in required. */
     submitPublicBooking: a
       .mutation()
@@ -338,7 +399,11 @@ const schema = a
       .authorization((allow) => [allow.guest(), allow.authenticated()])
       .handler(a.handler.function(submitBooking)),
   })
-  .authorization((allow) => [allow.resource(userManager), allow.resource(submitBooking)]);
+  .authorization((allow) => [
+    allow.resource(userManager),
+    allow.resource(submitBooking),
+    allow.resource(smsRegistry),
+  ]);
 
 export type Schema = ClientSchema<typeof schema>;
 

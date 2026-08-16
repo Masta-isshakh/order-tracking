@@ -37,7 +37,13 @@
     "react-native-worklets": "0.10.1"
   },
   "overrides": {
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "@aws-amplify/graphql-types-generator": {
+      "@babel/types": "^7.29.8",
+      "@babel/generator": "^7.29.8",
+      "@babel/traverse": "^7.29.8",
+      "@babel/template": "^7.29.7"
+    }
   },
   "devDependencies": {
     "@aws-amplify/backend": "^1.24.0",
@@ -51,8 +57,7 @@
     "@aws-sdk/lib-dynamodb": "^3.1106.0",
     "@types/aws-lambda": "^8.10.162",
     "@types/react": "~19.2.2",
-    "aws-cdk-lib": "^2.244.0",
-    "babel-preset-expo": "^57.0.6",
+    "aws-cdk-lib": "2.244.0",
     "constructs": "^10.8.1",
     "esbuild": "^0.28.1",
     "tsx": "^4.23.11",
@@ -76,8 +81,11 @@
     "probe": "node scripts/probe-delivery.mjs",
     "test:auth": "node scripts/test-auth-flow.mjs",
     "test:data": "node scripts/test-data-flows.mjs",
+    "test:tiers": "node scripts/test-tiered-auth.mjs",
+    "check:sns": "node scripts/check-sns.mjs",
+    "otp:tier": "node scripts/otp-tier.mjs",
     "test:firebase": "tsx scripts/test-firebase-verifier.mts",
-    "test:all": "npm run typecheck && npm run check:backend && npm run test:auth && npm run test:data && npm run test:firebase",
+    "test:all": "npm run typecheck && npm run check:backend && npm run test:tiers && npm run test:data && npm run test:firebase",
     "logs": "node scripts/logs.mjs"
   },
   "private": true

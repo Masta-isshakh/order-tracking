@@ -29,7 +29,11 @@ export const Skeleton = ({
     pulse.value = withRepeat(withTiming(1, { duration: 900 }), -1, true);
   }, [pulse]);
 
-  const animated = useAnimatedStyle(() => ({ opacity: pulse.value }));
+  // Explicit `return`: the worklets Babel plugin cannot parse a concise arrow
+  // body that returns an object literal.
+  const animated = useAnimatedStyle(() => {
+    return { opacity: pulse.value };
+  });
 
   return (
     <Animated.View

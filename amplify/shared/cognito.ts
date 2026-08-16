@@ -6,6 +6,7 @@ import {
   AdminDisableUserCommand,
   AdminEnableUserCommand,
   AdminGetUserCommand,
+  AdminListGroupsForUserCommand,
   AdminSetUserPasswordCommand,
   AdminUpdateUserAttributesCommand,
   CognitoIdentityProviderClient,
@@ -165,6 +166,29 @@ export const ensureUserInGroup = async (input: EnsureUserInput): Promise<EnsureU
         return { sub: again.sub, username: again.username, created: false };
       }
     }
+    throw err;
+  }
+};
+
+/**
+ * Groups a user belongs to. Read live from Cognito rather than mirrored onto a
+ * user attribute, because groups are what the authorization rules actually use
+ * and a mirrored copy would eventually drift.
+ *
+ * Returns an empty list for an unknown user instead of throwing — callers treat
+ * "no staff group" and "no such user" the same way.
+ */
+export const listGroupsForUser = async (
+  userPoolId: string,
+  usernameOrPhone: string,
+): Promise<string[]> => {
+  try {
+    const res = await cognito.send(
+      new AdminListGroupsForUserCommand({ UserPoolId: userPoolId, Username: usernameOrPhone }),
+    );
+    return (res.Groups ?? []).map((group) => group.GroupName ?? '').filter(Boolean);
+  } catch (err) {
+    if (err instanceof UserNotFoundException) return [];
     throw err;
   }
 };

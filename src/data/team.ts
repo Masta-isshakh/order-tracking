@@ -11,19 +11,25 @@ export const useSupervisors = (enabled = true) => {
   return useAsync<SupervisorProfile[]>(load, [], { enabled });
 };
 
-export const createSupervisor = async (input: {
+/** Creates a supervisor or another administrator. Both are Cognito groups. */
+export const createStaffMember = async (input: {
   name: string;
   phone: string;
   email: string;
   description: string;
+  role: 'ADMIN' | 'SUPERVISOR';
 }) => {
-  const result = await client.mutations.createSupervisor({
+  const args = {
     name: input.name.trim(),
     phone: input.phone,
     email: input.email.trim() || undefined,
     description: input.description.trim() || undefined,
-  });
-  return must(result, 'create supervisor');
+  };
+  const result =
+    input.role === 'ADMIN'
+      ? await client.mutations.createAdministrator(args)
+      : await client.mutations.createSupervisor(args);
+  return must(result, `create ${input.role.toLowerCase()}`);
 };
 
 export const setSupervisorAccess = async (supervisorId: string, isActive: boolean) => {

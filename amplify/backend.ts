@@ -11,6 +11,7 @@ import { createAuthChallenge } from './auth/create-auth-challenge/resource';
 import { verifyAuthChallenge } from './auth/verify-auth-challenge/resource';
 import { userManager } from './functions/user-manager/resource';
 import { submitBooking } from './functions/submit-booking/resource';
+import { smsRegistry } from './functions/sms-registry/resource';
 
 const backend = defineBackend({
   auth,
@@ -21,6 +22,7 @@ const backend = defineBackend({
   verifyAuthChallenge,
   userManager,
   submitBooking,
+  smsRegistry,
 });
 
 /* -------------------------------------------------------------------------- *
@@ -67,6 +69,57 @@ createChallengeFn.addToRolePolicy(
       // topic in the account.
       Null: { 'sns:TopicArn': 'true' },
     },
+  }),
+);
+
+/* -------------------------------------------------------------------------- *
+ * Group lookup for the sign-in decision
+ *
+ * createAuthChallenge reads the user's groups to decide whether an SMS code is
+ * required. It cannot be granted access through defineAuth's `access` block —
+ * it is a trigger of that pool, so referencing the pool would be circular. The
+ * ARN is therefore a same-account wildcard rather than the pool's own ARN.
+ * -------------------------------------------------------------------------- */
+createChallengeFn.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: ['cognito-idp:AdminListGroupsForUser'],
+    resources: [`arn:aws:cognito-idp:${supportStack.region}:${supportStack.account}:userpool/*`],
+  }),
+);
+
+/* -------------------------------------------------------------------------- *
+ * SMS destination registry
+ *
+ * The sandbox APIs are account-level, so they take no resource ARN. Scoped to
+ * exactly the five calls the admin screens make — notably NOT sns:Publish, so a
+ * flaw here could never be used to send messages.
+ * -------------------------------------------------------------------------- */
+backend.smsRegistry.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: [
+      'sns:GetSMSSandboxAccountStatus',
+      'sns:ListSMSSandboxPhoneNumbers',
+      'sns:CreateSMSSandboxPhoneNumber',
+      'sns:VerifySMSSandboxPhoneNumber',
+      'sns:DeleteSMSSandboxPhoneNumber',
+    ],
+    resources: ['*'],
+  }),
+);
+
+// Creating a supervisor registers their number for SMS in the same step, so the
+// user manager needs the add/list calls too.
+backend.userManager.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: [
+      'sns:GetSMSSandboxAccountStatus',
+      'sns:ListSMSSandboxPhoneNumbers',
+      'sns:CreateSMSSandboxPhoneNumber',
+    ],
+    resources: ['*'],
   }),
 );
 

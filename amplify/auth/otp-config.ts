@@ -25,14 +25,36 @@ import { secret } from '@aws-amplify/backend';
  */
 
 /**
- * 'SNS' | 'TWILIO' | 'FIREBASE' | 'DEV'
+ * 'SNS' | 'TWILIO' | 'FIREBASE' | 'DEV' | 'NONE'
  *
- * 'DEV' sends no SMS and shows the code on screen. Use it to build and demo the
- * three workspaces while a provider's compliance review is pending. It is NOT a
- * weaker login — it is no login at all, since anyone who knows a registered
- * number can sign in as them. `npm run check:backend` fails while it is active.
+ * Two no-SMS modes exist for use while a provider's compliance review is
+ * pending:
+ *
+ *   'DEV'   issues a real code, sends nothing, shows it on screen.
+ *   'NONE'  no code at all — entering a registered number signs you in.
+ *
+ * Neither is a weaker login; both are no login, because knowing someone's
+ * registered number is enough to become them. `npm run check:backend` fails
+ * while either is active so they cannot quietly reach real customers.
+ *
+ * Switching back to real verification is this one line — nothing else in the
+ * app changes, because workspace routing depends on Cognito groups rather than
+ * on how the number was proven.
  */
-export const OTP_PROVIDER = 'TWILIO';
+export const OTP_PROVIDER = 'SNS';
+
+/**
+ * Which Cognito groups must pass a real SMS code to sign in.
+ *
+ * Staff hold the destructive powers — editing the catalog, running orders,
+ * creating other staff — so they verify. Customers can only ever read their own
+ * order, so requiring a code there would add friction and SMS cost for no
+ * security gain. Anyone not in a listed group signs in on the number alone.
+ *
+ * Set to `''` to require verification from nobody, or add CUSTOMER to require it
+ * from everyone.
+ */
+export const OTP_REQUIRED_GROUPS = 'ADMIN,SUPERVISOR';
 
 /** Qatar requires a registered Sender ID; blank uses the account default. */
 export const SMS_SENDER_ID = '';
@@ -61,6 +83,7 @@ export const FIREBASE_PROJECT_ID = '';
 /** Shared by both triggers so a challenge is always checked the way it was issued. */
 export const otpEnvironment = {
   OTP_PROVIDER,
+  OTP_REQUIRED_GROUPS,
   SMS_SENDER_ID,
   TWILIO_ACCOUNT_SID,
   TWILIO_API_KEY_SID,

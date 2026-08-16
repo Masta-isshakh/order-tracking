@@ -15,7 +15,8 @@ import { EmptyState, ErrorState, Notice, SkeletonCard } from '../../src/ui/Feedb
 import { usePalette } from '../../src/theme/ThemeProvider';
 import { useI18n } from '../../src/i18n/I18nProvider';
 import { useAuth } from '../../src/auth/AuthProvider';
-import { createSupervisor, removeSupervisor, setSupervisorAccess, useSupervisors } from '../../src/data/team';
+import { createStaffMember, removeSupervisor, setSupervisorAccess, useSupervisors } from '../../src/data/team';
+import { ChoiceRow } from '../../src/components/SettingsRows';
 import { DEFAULT_COUNTRY, isLocalComplete, prettyPhone, toE164 } from '../../src/lib/phone';
 import { radius, shadow, spacing } from '../../src/theme/tokens';
 
@@ -31,6 +32,7 @@ export default function TeamScreen() {
   const [phone, setPhone] = useState<PhoneFieldValue>({ country: DEFAULT_COUNTRY, local: '' });
   const [email, setEmail] = useState('');
   const [description, setDescription] = useState('');
+  const [role, setRole] = useState<'ADMIN' | 'SUPERVISOR'>('SUPERVISOR');
   const [busy, setBusy] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
 
@@ -41,6 +43,7 @@ export default function TeamScreen() {
     setPhone({ country: DEFAULT_COUNTRY, local: '' });
     setEmail('');
     setDescription('');
+    setRole('SUPERVISOR');
     setBanner(null);
   };
 
@@ -58,7 +61,7 @@ export default function TeamScreen() {
     setBusy(true);
     setBanner(null);
     try {
-      const result = await createSupervisor({ name, phone: e164, email, description });
+      const result = await createStaffMember({ name, phone: e164, email, description, role });
       if (!result.ok) {
         setBanner(
           result.code === 'ALREADY_EXISTS'
@@ -74,6 +77,19 @@ export default function TeamScreen() {
       setSheetOpen(false);
       reset();
       await supervisors.refresh();
+
+      // Tell the admin what the new member should expect, rather than leaving
+      // them to discover at first sign-in that no code arrives.
+      const smsMessage =
+        {
+          SMS_CODE_SENT: d.sms.createdCodeSent,
+          SMS_ALREADY_VERIFIED: d.sms.createdVerified,
+          SMS_PENDING: d.sms.createdCodeSent,
+          SMS_NOT_NEEDED: d.sms.createdNotNeeded,
+          SMS_FAILED: d.sms.createdFailed,
+        }[result.code ?? ''] ?? null;
+
+      if (smsMessage) Alert.alert(d.team.created, smsMessage);
     } catch {
       setBanner(d.team.errors.generic);
     } finally {
@@ -170,10 +186,19 @@ export default function TeamScreen() {
                   ) : null}
                 </View>
 
-                <Badge
-                  label={supervisor.isActive === false ? d.team.accessOff : d.team.accessOn}
-                  tone={supervisor.isActive === false ? 'warning' : 'success'}
-                />
+                <View style={styles.badges}>
+                  <Badge
+                    label={
+                      supervisor.role === 'ADMIN' ? d.team.roleAdmin : d.team.roleSupervisor
+                    }
+                    tone={supervisor.role === 'ADMIN' ? 'primary' : 'neutral'}
+                    icon={supervisor.role === 'ADMIN' ? 'shield-checkmark' : 'person'}
+                  />
+                  <Badge
+                    label={supervisor.isActive === false ? d.team.accessOff : d.team.accessOn}
+                    tone={supervisor.isActive === false ? 'warning' : 'success'}
+                  />
+                </View>
               </View>
 
               <View style={styles.cardActions}>
@@ -232,6 +257,26 @@ export default function TeamScreen() {
         }
       >
         {banner ? <Notice tone="danger" icon="alert-circle-outline" title={banner} /> : null}
+
+        <View>
+          <Text variant="caption" tone="muted">
+            {d.team.role}
+          </Text>
+          <ChoiceRow<'ADMIN' | 'SUPERVISOR'>
+            options={[
+              { value: 'SUPERVISOR', label: d.team.roleSupervisor },
+              { value: 'ADMIN', label: d.team.roleAdmin },
+            ]}
+            value={role}
+            onChange={setRole}
+          />
+          {role === 'ADMIN' ? (
+            <Text variant="micro" tone="warning">
+              {d.team.roleHint}
+            </Text>
+          ) : null}
+        </View>
+
         <Input label={d.team.name} value={name} onChangeText={setName} required autoCapitalize="words" />
         <PhoneField label={d.team.phone} value={phone} onChange={setPhone} />
         <Input
@@ -250,6 +295,7 @@ export default function TeamScreen() {
 const styles = StyleSheet.create({
   list: { gap: spacing.md, paddingBottom: spacing.xxl, paddingTop: spacing.md },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  badges: { alignItems: 'flex-end', gap: spacing.xs },
   avatar: {
     width: 44,
     height: 44,

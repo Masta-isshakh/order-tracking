@@ -46,7 +46,11 @@ export const OtpField = ({
     }
   }, [error, shake]);
 
-  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] }));
+  // Explicit `return`: the worklets Babel plugin cannot parse a concise arrow
+  // body that returns an object literal.
+  const shakeStyle = useAnimatedStyle(() => {
+    return { transform: [{ translateX: shake.value }] };
+  });
 
   const handleChange = (text: string) => {
     const digits = text.replace(/\D/g, '').slice(0, LENGTH);

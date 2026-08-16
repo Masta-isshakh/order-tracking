@@ -47,6 +47,12 @@ export const auth = defineAuth({
       'enableUser',
       'disableUser',
     ]),
+    // NOTE: createAuthChallenge also needs to read groups, but it cannot be
+    // granted access here — it is a trigger OF this pool, so referencing the
+    // pool from it creates a circular CloudFormation dependency. Its IAM policy
+    // is attached directly in backend.ts, and it takes the pool id from
+    // `event.userPoolId` rather than an injected variable.
+
     // Public booking auto-provisions the customer so they can track immediately.
     // `updateUserAttributes`/`enableUser` are needed for the repeat-customer path,
     // where the account already exists and only its name/status is refreshed.

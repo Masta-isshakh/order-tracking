@@ -43,10 +43,6 @@
       "bundler": "metro",
       "output": "single"
     },
-    "locales": {
-      "en": "./locales/store/en.json",
-      "ar": "./locales/store/ar.json"
-    },
     "plugins": [
       "expo-router",
       "expo-localization",

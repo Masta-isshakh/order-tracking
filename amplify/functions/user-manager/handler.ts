@@ -5,6 +5,7 @@ import { env } from '$amplify/env/user-manager';
 import type { Schema } from '../../data/resource';
 import { normalizePhone } from '../../shared/phone';
 import { deleteUser, ensureUserInGroup, findUserByPhone, setUserEnabled } from '../../shared/cognito';
+import { registerForSms } from '../../shared/sms-registry';
 import {
   callerName,
   callerSub,
@@ -51,7 +52,9 @@ export const handler = async (event: AmplifyResolverEvent): Promise<Result> => {
   try {
     switch (field) {
       case 'createSupervisor':
-        return await createSupervisor(event.arguments, actorSub, actorName);
+        return await createStaff(event.arguments, actorSub, actorName, 'SUPERVISOR');
+      case 'createAdministrator':
+        return await createStaff(event.arguments, actorSub, actorName, 'ADMIN');
       case 'ensureCustomerAccount':
         return await ensureCustomerAccount(event.arguments, actorSub, actorName);
       case 'updateSupervisorAccess':
@@ -69,34 +72,40 @@ export const handler = async (event: AmplifyResolverEvent): Promise<Result> => {
 
 /* ------------------------------------------------------------------------- */
 
-const createSupervisor = async (
+/**
+ * Creates a staff member in the given Cognito group and records them in the
+ * staff directory. Supervisors and administrators differ only by group, so one
+ * function serves both.
+ */
+const createStaff = async (
   args: Record<string, unknown>,
   actorSub: string | null,
   actorName: string,
+  role: 'ADMIN' | 'SUPERVISOR',
 ): Promise<Result> => {
   const name = String(args.name ?? '').trim();
   const phone = normalizePhone(String(args.phone ?? ''), DEFAULT_DIAL_CODE);
   const email = String(args.email ?? '').trim() || null;
   const description = String(args.description ?? '').trim() || null;
 
-  if (!name) return fail('NAME_REQUIRED', 'Supervisor name is required');
+  if (!name) return fail('NAME_REQUIRED', 'Name is required');
   if (!phone) return fail('INVALID_PHONE', 'Enter a valid phone number');
 
   const duplicates = unwrap(
     await client.models.SupervisorProfile.listSupervisorProfileByPhone({ phone }),
-    'lookup supervisor',
+    'lookup staff member',
   );
   if (duplicates.length > 0) {
-    return fail('ALREADY_EXISTS', 'A supervisor with this phone number already exists');
+    return fail('ALREADY_EXISTS', 'Someone with this phone number already exists');
   }
 
-  const user = await ensureUserInGroup({
-    userPoolId: USER_POOL_ID,
-    phone,
-    name,
-    email,
-    group: 'SUPERVISOR',
-  });
+  const user = await ensureUserInGroup({ userPoolId: USER_POOL_ID, phone, name, email, group: role });
+
+  // Staff sign in with an SMS code, so the number must also be allowed to
+  // receive SMS from this AWS account. Doing it here means the new member gets
+  // their verification message immediately rather than discovering at first
+  // sign-in that codes never arrive.
+  const registration = await registerForSms(phone);
 
   const profile = unwrap(
     await client.models.SupervisorProfile.create({
@@ -104,16 +113,19 @@ const createSupervisor = async (
       name,
       email,
       description,
+      role,
       isActive: true,
       ownerSub: user.sub,
       cognitoUsername: user.username,
       createdBySub: actorSub,
       createdByName: actorName,
     }),
-    'create supervisor profile',
+    'create staff profile',
   );
 
-  return ok({ userId: profile?.id, phone });
+  // `code` carries the SMS-registration outcome so the app can tell the admin
+  // what the new staff member should expect next.
+  return ok({ userId: profile?.id, phone, code: `SMS_${registration.state}` });
 };
 
 const ensureCustomerAccount = async (

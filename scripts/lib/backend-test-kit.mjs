@@ -107,6 +107,22 @@ export const signInWithOtp = async (phone) => {
     }),
   );
 
+  // No-verification mode: the challenge is satisfied by any answer, so there is
+  // no code to look up.
+  if (start.ChallengeParameters?.provider === 'NONE') {
+    const done = await idp.send(
+      new RespondToAuthChallengeCommand({
+        ChallengeName: 'CUSTOM_CHALLENGE',
+        ClientId: CLIENT_ID,
+        Session: start.Session,
+        ChallengeResponses: { USERNAME: phone, ANSWER: 'no-verification' },
+      }),
+    );
+    const token = done.AuthenticationResult?.IdToken;
+    if (!token) throw new Error(`no-verification sign-in failed for ${phone}`);
+    return token;
+  }
+
   const record = await ddb.send(
     new GetCommand({ TableName: OTP_TABLE, Key: { phone }, ConsistentRead: true }),
   );
