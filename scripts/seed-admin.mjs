@@ -35,7 +35,11 @@ import {
 const args = process.argv.slice(2);
 const codeIndex = args.indexOf('--code');
 const oneTimeCode = codeIndex >= 0 ? args[codeIndex + 1] : null;
-const positional = args.filter((_, i) => i !== codeIndex && i !== codeIndex + 1);
+
+// Guard the -1 case: with no `--code` present, `codeIndex + 1` is 0, and
+// filtering on it would silently drop the first argument — the phone number.
+const positional =
+  codeIndex >= 0 ? args.filter((_, i) => i !== codeIndex && i !== codeIndex + 1) : args;
 
 const [rawPhone, ...nameParts] = positional;
 const name = nameParts.join(' ').trim() || 'Administrator';

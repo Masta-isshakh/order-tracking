@@ -39,7 +39,10 @@ const startedAt = Date.now() - 5000;
 
 try {
   const user = await provisionUser(phone, 'Delivery Probe', 'CUSTOMER');
-  username = user.username;
+  // Only clean up an account this probe created. The number being tested is
+  // usually a real admin's, and deleting it would revoke their access.
+  username = user.created ? user.username : null;
+  if (!user.created) console.log('  (existing account — it will be left alone)');
 
   const start = await idp.send(
     new InitiateAuthCommand({

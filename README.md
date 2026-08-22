@@ -179,21 +179,24 @@ docs/                        QA checklist, publishing guide, SMS setup
 ## 5. Going to production
 
 The sandbox is a personal, disposable environment — **never ship an app pointing
-at it**. Before building for the stores, create a real branch deployment and
-regenerate the config:
+at it**. Production is already deployed: Amplify app `order-tracking`
+(`d24rn1118uqxmt`), branch `main`, in AWS account `115246381405` via profile
+`torz`.
 
 ```bash
-# once: create an Amplify app and connect this repo
-npx ampx pipeline-deploy --branch main --app-id <YOUR_AMPLIFY_APP_ID>
+# deploy a backend change to production
+AWS_PROFILE=torz CI=1 npx ampx pipeline-deploy --branch main --app-id d24rn1118uqxmt
 
-# then, before every store build
-npx ampx generate outputs --app-id <YOUR_AMPLIFY_APP_ID> --branch main
+# point the app at production before a store build
+AWS_PROFILE=torz npx ampx generate outputs --app-id d24rn1118uqxmt --branch main
 ```
 
-See [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the full store checklist,
-[`docs/OTP-PROVIDERS.md`](docs/OTP-PROVIDERS.md) to pick an SMS provider, and
-[`docs/SMS-QATAR.md`](docs/SMS-QATAR.md) for the Sender ID registration AWS
-needs before OTPs reach real Qatari phones.
+[`docs/PRODUCTION.md`](docs/PRODUCTION.md) is the runbook — what is deployed
+where, how to ship a JS change over the air versus a native one, and how to roll
+back. See also [`docs/PUBLISHING.md`](docs/PUBLISHING.md) for the store
+checklist, [`docs/OTP-PROVIDERS.md`](docs/OTP-PROVIDERS.md) to pick an SMS
+provider, and [`docs/SMS-QATAR.md`](docs/SMS-QATAR.md) for the Sender ID
+registration that improves deliverability to Qatari carriers.
 
 ---
 

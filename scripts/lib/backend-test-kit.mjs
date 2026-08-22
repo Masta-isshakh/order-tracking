@@ -42,10 +42,17 @@ const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }));
 const throwawayPassword = () =>
   `Aa1!${randomBytes(18).toString('base64url').replace(/[^A-Za-z0-9]/g, '')}${randomInt(9)}`;
 
-/** Creates (or reuses) a pool user in the given group and returns its identifiers. */
+/**
+ * Creates (or reuses) a pool user in the given group.
+ *
+ * `created` says whether this call brought the account into existence. Callers
+ * MUST check it before cleaning up: deleting a pre-existing account — a real
+ * admin who happens to share the test number — destroys live access.
+ */
 export const provisionUser = async (phone, name, group) => {
   let username;
   let sub;
+  let created = false;
 
   try {
     const existing = await idp.send(new AdminGetUserCommand({ UserPoolId: USER_POOL_ID, Username: phone }));
@@ -53,7 +60,7 @@ export const provisionUser = async (phone, name, group) => {
     sub = existing.UserAttributes.find((a) => a.Name === 'sub')?.Value;
   } catch (err) {
     if (!(err instanceof UserNotFoundException)) throw err;
-    const created = await idp.send(
+    const newUser = await idp.send(
       new AdminCreateUserCommand({
         UserPoolId: USER_POOL_ID,
         Username: phone,
@@ -66,8 +73,9 @@ export const provisionUser = async (phone, name, group) => {
         DesiredDeliveryMediums: [],
       }),
     );
-    username = created.User.Username;
-    sub = created.User.Attributes.find((a) => a.Name === 'sub')?.Value;
+    username = newUser.User.Username;
+    sub = newUser.User.Attributes.find((a) => a.Name === 'sub')?.Value;
+    created = true;
     await idp.send(
       new AdminSetUserPasswordCommand({
         UserPoolId: USER_POOL_ID,
@@ -82,7 +90,7 @@ export const provisionUser = async (phone, name, group) => {
     new AdminAddUserToGroupCommand({ UserPoolId: USER_POOL_ID, Username: username, GroupName: group }),
   );
 
-  return { phone, username, sub, group };
+  return { phone, username, sub, group, created };
 };
 
 export const deleteUser = async (username) => {

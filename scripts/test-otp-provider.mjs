@@ -74,7 +74,9 @@ if (provider === 'FIREBASE') {
 let username = null;
 try {
   const user = await provisionUser(PHONE, 'OTP Provider Test', 'CUSTOMER');
-  username = user.username;
+  // Never delete an account we did not create — this is usually a real number.
+  username = user.created ? user.username : null;
+  if (!user.created) console.log('  (existing account — it will be left alone)');
   r.ok('test account provisioned');
 
   const start = await idp.send(

@@ -12,8 +12,16 @@ Two things have to be true before that first admin can sign in:
 | 1. Account in the **ADMIN** group | Amazon Cognito | Decides which workspace they see |
 | 2. Number allowed to receive SMS | Amazon SNS | Otherwise the sign-in code never arrives |
 
-Step 2 is only needed while your AWS account is in the SMS sandbox. Check with
-`node scripts/check-sns.mjs`.
+**Step 2 does not apply to this account.** Everything runs in AWS account
+`115246381405` (profile `torz`), which has **SNS production access** — any number
+can be texted, with no destination list to maintain. The seed script detects this
+and skips the step. Confirm any time with `node scripts/check-sns.mjs`.
+
+> Every AWS command in this project must use the `torz` profile. The npm scripts
+> already pass `--profile torz`; for the AWS CLI add `--profile torz`, and for
+> the Node scripts set `$env:AWS_PROFILE="torz"` first. Running without it picks
+> up different credentials in a **different AWS account**, which is how the
+> backend ended up deployed twice in this project.
 
 ---
 
@@ -42,7 +50,7 @@ want to understand it or do it without the repo.
 ## By hand, part 1 — Cognito
 
 You need your user pool id. It is in `amplify_outputs.json` under
-`auth.user_pool_id`, and looks like `ap-south-1_qgUY3hGT4`.
+`auth.user_pool_id`, and looks like `ap-south-1_DL7nBC7kA`.
 
 ### In the console
 
@@ -60,7 +68,7 @@ You need your user pool id. It is in `amplify_outputs.json` under
 ### Or with the AWS CLI
 
 ```bash
-POOL=ap-south-1_qgUY3hGT4
+POOL=ap-south-1_DL7nBC7kA
 PHONE=+97455708226
 
 aws cognito-idp admin-create-user \
