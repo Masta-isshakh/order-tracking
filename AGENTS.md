@@ -36,6 +36,31 @@ with `MessageAction: SUPPRESS` and `phone_number_verified: true`.
 takes an update path for existing users, so `updateUserAttributes` and
 `enableUser` are needed alongside `createUser`.
 
+**Never hard-code the tab bar's height or bottom padding.** React Navigation
+treats a numeric `height` in `tabBarStyle` as the *total* bar height and stops
+adding the safe-area inset itself, and a `paddingBottom` in the same style
+overrides the inset padding it would otherwise apply — so hard-coding both lays
+the icons out inside the strip the system keeps for its gesture bar. Use
+`useTabBarStyle()` (`src/ui/tabBar.ts`), which derives both from the real inset.
+This looks fine on Android three-button navigation, where the inset is 0, and is
+broken on every gesture-navigation device.
+
+**Screens inside a tab navigator must pass `edges={{ bottom: false }}`.** The tab
+bar already occupies the bottom inset; padding for it again opens a dead band
+above the bar.
+
+**`bottomInset` belongs on the list, not the container.** A FAB or a sticky bar
+is positioned against the screen container, so shrinking the container to make
+scroll room lifts that element off the bottom too. Pad the list's
+`contentContainerStyle` with `fabClearance` instead.
+
+**Android does not resize for the keyboard.** React Native calls
+`enableEdgeToEdge()` for any app targeting SDK 35+ (this one targets 36), which
+sets `decorFitsSystemWindows` to false; Android then ignores `adjustResize` and
+expects the app to consume the IME inset. `KeyboardAvoidingView` therefore needs
+`behavior="padding"` on Android too — with no behavior it silently does nothing
+and the keyboard covers the chat composer and the last field of every form.
+
 **RTL is a style, not a restart.** The root `<Screen>` sets `direction: 'rtl'`
 and Yoga flips the layout live. Never call `I18nManager.forceRTL` — it needs a
 native reload. Keep phone numbers, prices and order codes LTR
