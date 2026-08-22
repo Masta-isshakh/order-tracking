@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { Redirect } from 'expo-router';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/ui/Screen';
 import { Header } from '../../src/ui/Header';
@@ -22,7 +22,13 @@ import {
   useSmsRegistry,
 } from '../../src/data/smsNumbers';
 import { useSupervisors } from '../../src/data/team';
-import { DEFAULT_COUNTRY, isLocalComplete, prettyPhone, toE164 } from '../../src/lib/phone';
+import {
+  DEFAULT_COUNTRY,
+  fromE164,
+  isLocalComplete,
+  prettyPhone,
+  toE164,
+} from '../../src/lib/phone';
 import { radius, shadow, spacing, fabClearance } from '../../src/theme/tokens';
 
 type Stage =
@@ -52,6 +58,21 @@ export default function SmsNumbersScreen() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [banner, setBanner] = useState<{ tone: 'danger' | 'success'; text: string } | null>(null);
+
+  /*
+   * Arriving from "Add phone number" on the supervisor-created alert: open the
+   * sheet already filled in, so the admin does not have to re-key a number the
+   * app already knows. Guarded by a ref because the param survives re-renders,
+   * and without it closing the sheet would immediately reopen it.
+   */
+  const { phone: prefill } = useLocalSearchParams<{ phone?: string }>();
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (!prefill || prefilled.current) return;
+    prefilled.current = true;
+    setPhone(fromE164(prefill));
+    setStage({ kind: 'add' });
+  }, [prefill]);
 
   const data = registry.data;
   const numbers = data?.numbers ?? [];

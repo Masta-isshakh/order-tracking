@@ -345,6 +345,7 @@ export const ar: Dictionary = {
     createdVerified: 'رقمه يستطيع استقبال رموز الدخول بالفعل.',
     createdFailed: 'تعذّر تسجيل رقمه للرسائل. أضفه يدوياً من صفحة أرقام الهواتف.',
     createdNotNeeded: 'يستطيع استقبال رموز الدخول مباشرة.',
+    addNumberAction: 'إضافة رقم الهاتف',
   },
 
   settings: {

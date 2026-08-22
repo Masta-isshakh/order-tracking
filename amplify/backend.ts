@@ -92,8 +92,15 @@ createChallengeFn.addToRolePolicy(
  * SMS destination registry
  *
  * The sandbox APIs are account-level, so they take no resource ARN. Scoped to
- * exactly the five calls the admin screens make — notably NOT sns:Publish, so a
+ * exactly the calls the admin screens make — notably NOT sns:Publish, so a
  * flaw here could never be used to send messages.
+ *
+ * Both action families are granted deliberately. The SDK still exposes these as
+ * `...SMSSandbox...` commands on the SNS client, but AWS now serves them from
+ * PinpointSmsVoiceV2, and authorises them against `sms-voice:` actions — so a
+ * policy naming only the `sns:` ones fails at runtime with
+ * AuthorizationErrorException while looking complete in the console. The `sns:`
+ * entries stay for older regions that still route to SNS itself.
  * -------------------------------------------------------------------------- */
 backend.smsRegistry.resources.lambda.addToRolePolicy(
   new PolicyStatement({
@@ -104,6 +111,12 @@ backend.smsRegistry.resources.lambda.addToRolePolicy(
       'sns:CreateSMSSandboxPhoneNumber',
       'sns:VerifySMSSandboxPhoneNumber',
       'sns:DeleteSMSSandboxPhoneNumber',
+      'sms-voice:DescribeAccountAttributes',
+      'sms-voice:DescribeVerifiedDestinationNumbers',
+      'sms-voice:CreateVerifiedDestinationNumber',
+      'sms-voice:SendDestinationNumberVerificationCode',
+      'sms-voice:VerifyDestinationNumber',
+      'sms-voice:DeleteVerifiedDestinationNumber',
     ],
     resources: ['*'],
   }),
@@ -118,6 +131,10 @@ backend.userManager.resources.lambda.addToRolePolicy(
       'sns:GetSMSSandboxAccountStatus',
       'sns:ListSMSSandboxPhoneNumbers',
       'sns:CreateSMSSandboxPhoneNumber',
+      'sms-voice:DescribeAccountAttributes',
+      'sms-voice:DescribeVerifiedDestinationNumbers',
+      'sms-voice:CreateVerifiedDestinationNumber',
+      'sms-voice:SendDestinationNumberVerificationCode',
     ],
     resources: ['*'],
   }),

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Switch, View } from 'react-native';
-import { Redirect } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/ui/Screen';
 import { Header } from '../../src/ui/Header';
@@ -24,6 +24,7 @@ import { radius, shadow, spacing, fabClearance } from '../../src/theme/tokens';
 export default function TeamScreen() {
   const palette = usePalette();
   const { d } = useI18n();
+  const router = useRouter();
   const { user } = useAuth();
   const supervisors = useSupervisors(user?.role === 'ADMIN');
 
@@ -89,7 +90,34 @@ export default function TeamScreen() {
           SMS_FAILED: d.sms.createdFailed,
         }[result.code ?? ''] ?? null;
 
-      if (smsMessage) Alert.alert(d.team.created, smsMessage);
+      // Every outcome that leaves something to do on the Phone numbers screen
+      // offers to go there, carrying the number so it arrives ready to submit.
+      // Telling someone to "add it manually" and then making them find the
+      // screen and retype the number is the part that used to be tedious.
+      const needsList =
+        result.code === 'SMS_FAILED' ||
+        result.code === 'SMS_CODE_SENT' ||
+        result.code === 'SMS_PENDING';
+
+      if (smsMessage) {
+        Alert.alert(
+          d.team.created,
+          smsMessage,
+          needsList
+            ? [
+                { text: d.common.close, style: 'cancel' },
+                {
+                  text: d.sms.addNumberAction,
+                  onPress: () =>
+                    router.push({
+                      pathname: '/staff/sms-numbers',
+                      params: result.phone ? { phone: result.phone } : {},
+                    }),
+                },
+              ]
+            : undefined,
+        );
+      }
     } catch {
       setBanner(d.team.errors.generic);
     } finally {

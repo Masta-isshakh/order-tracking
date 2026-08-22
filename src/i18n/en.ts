@@ -346,6 +346,7 @@ export const en = {
     createdVerified: 'Their number can already receive sign-in codes.',
     createdFailed: 'Could not register their number for SMS. Add it manually on the Phone numbers screen.',
     createdNotNeeded: 'They can receive sign-in codes right away.',
+    addNumberAction: 'Add phone number',
   },
 
   settings: {
