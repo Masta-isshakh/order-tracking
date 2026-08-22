@@ -162,6 +162,8 @@ export const en = {
   },
 
   track: {
+    staffTitle: 'You’re in the customer view',
+    staffBody: 'This tab shows a customer the orders on their own number. Yours are in the staff workspace.',
     title: 'My orders',
     empty: 'No orders yet',
     emptyBody: 'Once we start work on your vehicle, you’ll see live progress here.',

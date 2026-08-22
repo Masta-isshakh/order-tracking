@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { Redirect, useLocalSearchParams } from 'expo-router';
+import { Redirect, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/ui/Screen';
 import { Header } from '../../src/ui/Header';
@@ -65,6 +65,19 @@ export default function SmsNumbersScreen() {
    * app already knows. Guarded by a ref because the param survives re-renders,
    * and without it closing the sheet would immediately reopen it.
    */
+  /*
+   * Refetch whenever the screen comes back into view. Without this the hook
+   * loads once per mount, so a failure — a backend permission that has since
+   * been fixed, a dropped connection — stays on screen for the life of the app
+   * session, telling the admin to fix something that is already fixed.
+   */
+  const refreshRegistry = registry.refresh;
+  useFocusEffect(
+    React.useCallback(() => {
+      void refreshRegistry();
+    }, [refreshRegistry]),
+  );
+
   const { phone: prefill } = useLocalSearchParams<{ phone?: string }>();
   const prefilled = useRef(false);
   useEffect(() => {

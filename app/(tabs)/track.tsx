@@ -1,6 +1,6 @@
 import React from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../src/ui/Screen';
 import { Header } from '../../src/ui/Header';
@@ -29,14 +29,6 @@ export default function TrackScreen() {
   const orders = useMyOrders();
 
   const isStaff = user?.role === 'ADMIN' || user?.role === 'SUPERVISOR';
-
-  // Staff who land here (e.g. by tapping the tab after signing in) are sent
-  // straight to their workspace rather than shown an empty customer list.
-  useFocusEffect(
-    React.useCallback(() => {
-      if (isStaff) router.replace('/(staff)/orders');
-    }, [isStaff, router]),
-  );
 
   if (status !== 'signedIn') {
     return (
@@ -69,7 +61,38 @@ export default function TrackScreen() {
     );
   }
 
-  if (isStaff) return null;
+  /*
+   * Staff standing in the storefront. This used to redirect to the workspace on
+   * focus and render nothing meanwhile — which showed a blank screen whenever
+   * the redirect did not land, with no way back, and overrode the choice the
+   * user had just made by tapping "Customer view". Explain where their orders
+   * are and let them decide instead.
+   */
+  if (isStaff) {
+    return (
+      <Screen edges={{ bottom: false }} scroll>
+        <Header title={d.tabs.track} />
+        <View style={styles.gate}>
+          <View style={[styles.gateIcon, { backgroundColor: palette.primarySoft }]}>
+            <Ionicons name="briefcase" size={40} color={palette.primary} />
+          </View>
+          <Text variant="title" align="center">
+            {d.track.staffTitle}
+          </Text>
+          <Text variant="body" tone="muted" align="center">
+            {d.track.staffBody}
+          </Text>
+          <Button
+            label={d.settings.openWorkspace}
+            onPress={() => router.replace('/(staff)/orders')}
+            size="lg"
+            icon="arrow-forward"
+            full
+          />
+        </View>
+      </Screen>
+    );
+  }
 
   const list = orders.data ?? [];
 
