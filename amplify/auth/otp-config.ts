@@ -59,8 +59,13 @@ export const OTP_REQUIRED_GROUPS = 'ADMIN,SUPERVISOR';
 /** Qatar requires a registered Sender ID; blank uses the account default. */
 export const SMS_SENDER_ID = '';
 
-/** Starts with "AC". Not a credential — Twilio uses it as the username. */
-export const TWILIO_ACCOUNT_SID = '';
+/**
+ * Starts with "AC". Twilio uses it as the username, so it is not a password —
+ * but GitHub's secret scanner blocks any push containing one, and paired with a
+ * leaked token it is half of a working credential. Keep it out of git: set it
+ * from the environment, or paste it in locally and do not commit the change.
+ */
+export const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID ?? '';
 
 /**
  * Optional. Starts with "SK".
@@ -74,8 +79,8 @@ export const TWILIO_ACCOUNT_SID = '';
  */
 export const TWILIO_API_KEY_SID = '';
 
-/** Starts with "VA". The Verify service, not the account. */
-export const TWILIO_VERIFY_SERVICE_SID = '';
+/** Starts with "VA". The Verify service, not the account. Same rule as above. */
+export const TWILIO_VERIFY_SERVICE_SID = process.env.TWILIO_VERIFY_SERVICE_SID ?? '';
 
 /** Your Firebase project id, e.g. "stars-qa". */
 export const FIREBASE_PROJECT_ID = '';

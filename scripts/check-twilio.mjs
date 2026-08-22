@@ -22,8 +22,12 @@ const IDENTIFIER = process.argv[2] ?? 'stars';
 /** Pulls the values out of otp-config.ts without importing TypeScript. */
 const readConfig = () => {
   const source = readFileSync(join(root, 'amplify', 'auth', 'otp-config.ts'), 'utf8');
+  // Literal first, then the environment — the SIDs are kept out of git, so in
+  // a clean checkout they arrive as TWILIO_ACCOUNT_SID=... not as a literal.
   const pick = (name) =>
-    (new RegExp(`export const ${name}\\s*=\\s*'([^']*)'`).exec(source) ?? [])[1] ?? '';
+    (new RegExp(`export const ${name}\\s*=\\s*'([^']*)'`).exec(source) ?? [])[1] ||
+    process.env[name] ||
+    '';
   return {
     provider: pick('OTP_PROVIDER'),
     accountSid: pick('TWILIO_ACCOUNT_SID'),

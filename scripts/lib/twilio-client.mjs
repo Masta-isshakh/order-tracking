@@ -18,8 +18,12 @@ const AMPX = join(projectRoot, 'node_modules', '@aws-amplify', 'backend-cli', 'l
 /** Pulls values out of otp-config.ts without needing a TypeScript loader. */
 export const readTwilioConfig = () => {
   const source = readFileSync(join(projectRoot, 'amplify', 'auth', 'otp-config.ts'), 'utf8');
+  // Literal first, then the environment — the SIDs are kept out of git, so in
+  // a clean checkout they arrive as TWILIO_ACCOUNT_SID=... not as a literal.
   const pick = (name) =>
-    (new RegExp(`export const ${name}\\s*=\\s*'([^']*)'`).exec(source) ?? [])[1] ?? '';
+    (new RegExp(`export const ${name}\\s*=\\s*'([^']*)'`).exec(source) ?? [])[1] ||
+    process.env[name] ||
+    '';
   return {
     provider: pick('OTP_PROVIDER'),
     accountSid: pick('TWILIO_ACCOUNT_SID'),
