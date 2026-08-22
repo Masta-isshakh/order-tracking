@@ -11,7 +11,7 @@ import { OrderCard } from '../../src/components/OrderCard';
 import { usePalette } from '../../src/theme/ThemeProvider';
 import { useI18n } from '../../src/i18n/I18nProvider';
 import { useStaffOrders, type OrderBucket } from '../../src/data/orders';
-import { radius, shadow, spacing } from '../../src/theme/tokens';
+import { radius, shadow, spacing, fabClearance } from '../../src/theme/tokens';
 
 /** Staff order board: New, Pending, Completed and full History. */
 export default function StaffOrdersScreen() {
@@ -43,7 +43,7 @@ export default function StaffOrdersScreen() {
   };
 
   return (
-    <Screen bottomInset={80}>
+    <Screen edges={{ bottom: false }}>
       <Header title={d.orders.title} />
 
       <Input
@@ -125,7 +125,7 @@ export default function StaffOrdersScreen() {
 const styles = StyleSheet.create({
   search: { marginBottom: spacing.md },
   listWrap: { flex: 1, marginTop: spacing.md },
-  list: { gap: spacing.md, paddingBottom: spacing.xxl },
+  list: { gap: spacing.md, paddingBottom: fabClearance },
   fab: {
     position: 'absolute',
     insetInlineEnd: spacing.lg,

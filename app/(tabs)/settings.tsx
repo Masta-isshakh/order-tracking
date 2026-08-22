@@ -15,7 +15,7 @@ export default function StorefrontSettings() {
   const isStaff = user?.role === 'ADMIN' || user?.role === 'SUPERVISOR';
 
   return (
-    <Screen scroll>
+    <Screen edges={{ bottom: false }} scroll>
       <Header title={d.settings.title} />
       <SettingsBody>
         {isStaff ? (

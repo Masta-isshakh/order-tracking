@@ -10,7 +10,7 @@ import { CatalogCard } from '../../src/components/CatalogCard';
 import { usePalette } from '../../src/theme/ThemeProvider';
 import { useI18n } from '../../src/i18n/I18nProvider';
 import { useCatalog } from '../../src/data/catalog';
-import { radius, shadow, spacing } from '../../src/theme/tokens';
+import { radius, shadow, spacing, fabClearance } from '../../src/theme/tokens';
 
 /** Staff catalog: create, edit and hide services and packages. */
 export default function StaffCatalogScreen() {
@@ -36,7 +36,7 @@ export default function StaffCatalogScreen() {
   const kind = tab === 'services' ? 'service' : 'package';
 
   return (
-    <Screen bottomInset={80}>
+    <Screen edges={{ bottom: false }}>
       <Header title={d.catalog.title} />
 
       <Segmented
@@ -117,7 +117,7 @@ export default function StaffCatalogScreen() {
 
 const styles = StyleSheet.create({
   listWrap: { flex: 1, marginTop: spacing.md },
-  list: { gap: spacing.sm, paddingBottom: spacing.xxl },
+  list: { gap: spacing.sm, paddingBottom: fabClearance },
   fab: {
     position: 'absolute',
     insetInlineEnd: spacing.lg,

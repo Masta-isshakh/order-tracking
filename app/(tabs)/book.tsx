@@ -12,7 +12,7 @@ import { usePalette } from '../../src/theme/ThemeProvider';
 import { useI18n } from '../../src/i18n/I18nProvider';
 import { useCatalog } from '../../src/data/catalog';
 import { useBookingDraft } from '../../src/data/bookingDraft';
-import { shadow, spacing } from '../../src/theme/tokens';
+import { fabClearance, shadow, spacing } from '../../src/theme/tokens';
 
 /**
  * Public catalog with selection. No sign-in required — verification only happens
@@ -39,7 +39,7 @@ export default function BookScreen() {
   );
 
   return (
-    <Screen bottomInset={selections.length > 0 ? 96 : 0}>
+    <Screen edges={{ bottom: false }}>
       <Header title={d.book.title} />
 
       <Text variant="body" tone="muted" style={styles.subtitle}>
@@ -78,7 +78,10 @@ export default function BookScreen() {
         ) : (
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={[
+              styles.list,
+              selections.length > 0 ? { paddingBottom: fabClearance } : null,
+            ]}
             refreshControl={
               <RefreshControl
                 refreshing={catalog.refreshing}

@@ -1,9 +1,9 @@
 import React from 'react';
-import { Platform, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { usePalette } from '../../src/theme/ThemeProvider';
 import { useI18n } from '../../src/i18n/I18nProvider';
+import { useTabBarStyle } from '../../src/ui/tabBar';
 
 /**
  * The storefront shell every visitor sees on launch: Home, Book, Track, Settings.
@@ -12,6 +12,7 @@ import { useI18n } from '../../src/i18n/I18nProvider';
 export default function StorefrontTabs() {
   const palette = usePalette();
   const { d } = useI18n();
+  const tabBarStyle = useTabBarStyle(palette);
 
   return (
     <Tabs
@@ -19,14 +20,7 @@ export default function StorefrontTabs() {
         headerShown: false,
         tabBarActiveTintColor: palette.primary,
         tabBarInactiveTintColor: palette.textFaint,
-        tabBarStyle: {
-          backgroundColor: palette.surface,
-          borderTopColor: palette.border,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingTop: 6,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-        },
+        tabBarStyle,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         sceneStyle: { backgroundColor: palette.bg },
       }}

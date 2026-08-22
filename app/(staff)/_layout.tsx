@@ -1,9 +1,9 @@
 import React from 'react';
-import { Platform, StyleSheet } from 'react-native';
 import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { usePalette } from '../../src/theme/ThemeProvider';
 import { useI18n } from '../../src/i18n/I18nProvider';
+import { useTabBarStyle } from '../../src/ui/tabBar';
 import { useAuth } from '../../src/auth/AuthProvider';
 
 /**
@@ -14,6 +14,7 @@ import { useAuth } from '../../src/auth/AuthProvider';
 export default function StaffTabs() {
   const palette = usePalette();
   const { d } = useI18n();
+  const tabBarStyle = useTabBarStyle(palette);
   const { user, status } = useAuth();
 
   // Guard: anyone who is not staff is sent back to the storefront. Group
@@ -31,14 +32,7 @@ export default function StaffTabs() {
         headerShown: false,
         tabBarActiveTintColor: palette.primary,
         tabBarInactiveTintColor: palette.textFaint,
-        tabBarStyle: {
-          backgroundColor: palette.surface,
-          borderTopColor: palette.border,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingTop: 6,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-        },
+        tabBarStyle,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         sceneStyle: { backgroundColor: palette.bg },
       }}

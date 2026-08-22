@@ -43,7 +43,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <Screen
+    <Screen edges={{ bottom: false }}
       scroll
       refreshing={catalog.refreshing || company.refreshing}
       onRefresh={refresh}

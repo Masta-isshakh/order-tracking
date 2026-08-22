@@ -18,7 +18,7 @@ import { useAuth } from '../../src/auth/AuthProvider';
 import { createStaffMember, removeSupervisor, setSupervisorAccess, useSupervisors } from '../../src/data/team';
 import { ChoiceRow } from '../../src/components/SettingsRows';
 import { DEFAULT_COUNTRY, isLocalComplete, prettyPhone, toE164 } from '../../src/lib/phone';
-import { radius, shadow, spacing } from '../../src/theme/tokens';
+import { radius, shadow, spacing, fabClearance } from '../../src/theme/tokens';
 
 /** Admin-only: create supervisors and control their access. */
 export default function TeamScreen() {
@@ -127,7 +127,7 @@ export default function TeamScreen() {
   const list = supervisors.data ?? [];
 
   return (
-    <Screen bottomInset={80}>
+    <Screen edges={{ bottom: false }}>
       <Header title={d.team.title} />
 
       {supervisors.loading ? (
@@ -293,7 +293,7 @@ export default function TeamScreen() {
 }
 
 const styles = StyleSheet.create({
-  list: { gap: spacing.md, paddingBottom: spacing.xxl, paddingTop: spacing.md },
+  list: { gap: spacing.md, paddingBottom: fabClearance, paddingTop: spacing.md },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   badges: { alignItems: 'flex-end', gap: spacing.xs },
   avatar: {

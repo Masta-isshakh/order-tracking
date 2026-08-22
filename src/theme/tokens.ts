@@ -186,6 +186,15 @@ export const spacing = {
   xxxl: 48,
 } as const;
 
+/**
+ * Scroll room to leave under the last row of a list so a floating action button
+ * cannot cover it: the button is 56 tall and sits `spacing.lg` off the bottom.
+ *
+ * Belongs on the list's own contentContainerStyle. Padding the screen container
+ * instead would move the button up with it.
+ */
+export const fabClearance = 96;
+
 export const radius = {
   sm: 8,
   md: 12,

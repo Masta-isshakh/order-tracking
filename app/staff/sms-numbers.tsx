@@ -23,7 +23,7 @@ import {
 } from '../../src/data/smsNumbers';
 import { useSupervisors } from '../../src/data/team';
 import { DEFAULT_COUNTRY, isLocalComplete, prettyPhone, toE164 } from '../../src/lib/phone';
-import { radius, shadow, spacing } from '../../src/theme/tokens';
+import { radius, shadow, spacing, fabClearance } from '../../src/theme/tokens';
 
 type Stage =
   | { kind: 'closed' }
@@ -120,7 +120,7 @@ export default function SmsNumbersScreen() {
   };
 
   return (
-    <Screen bottomInset={inSandbox ? 80 : 0}>
+    <Screen>
       <Header title={d.sms.title} subtitle={d.sms.subtitle} showBack />
 
       {registry.loading ? (
@@ -358,7 +358,7 @@ const addAll = async (
 };
 
 const styles = StyleSheet.create({
-  list: { gap: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.xxl },
+  list: { gap: spacing.md, paddingTop: spacing.md, paddingBottom: fabClearance },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   grow: { flex: 1, gap: 1 },
   statusIcon: {

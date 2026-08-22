@@ -22,10 +22,23 @@ type ScreenProps = {
   onRefresh?: () => void;
   /** Adds the standard horizontal gutter. */
   padded?: boolean;
-  /** Extra bottom room so a floating action button never covers content. */
+  /**
+   * Extra scroll room under the last item, so a floating button cannot cover
+   * it. Applies to this screen's own ScrollView, i.e. only when `scroll`.
+   *
+   * A screen that scrolls a list of its own pads that list instead. Do not add
+   * the room by shrinking this container: anything the screen positions
+   * absolutely — a FAB, a sticky bar — is measured against the container, so
+   * shrinking it lifts that element off the bottom of the screen too.
+   */
   bottomInset?: number;
   style?: ViewStyle;
   contentStyle?: ViewStyle;
+  /**
+   * Which system insets to pad for. Screens inside a tab navigator must pass
+   * `bottom: false` — the tab bar already sits in that strip, so padding for it
+   * again just opens a dead band above the bar.
+   */
   edges?: { top?: boolean; bottom?: boolean };
 };
 
@@ -50,7 +63,7 @@ export const Screen = ({
   const insets = useSafeAreaInsets();
 
   const paddingTop = edges?.top === false ? 0 : insets.top;
-  const paddingBottom = (edges?.bottom === false ? 0 : insets.bottom) + bottomInset;
+  const paddingBottom = edges?.bottom === false ? 0 : insets.bottom;
 
   const body = (
     <View
@@ -77,7 +90,7 @@ export const Screen = ({
         {scroll ? (
           <ScrollView
             style={styles.flex}
-            contentContainerStyle={{ paddingBottom: paddingBottom + spacing.xl }}
+            contentContainerStyle={{ paddingBottom: paddingBottom + bottomInset + spacing.xl }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             refreshControl={

@@ -13,7 +13,7 @@ export default function StaffSettings() {
   const { user } = useAuth();
 
   return (
-    <Screen scroll>
+    <Screen edges={{ bottom: false }} scroll>
       <Header title={d.settings.title} />
       <SettingsBody>
         <SettingsSection title={d.settings.workspace}>

@@ -40,7 +40,7 @@ export default function TrackScreen() {
 
   if (status !== 'signedIn') {
     return (
-      <Screen scroll>
+      <Screen edges={{ bottom: false }} scroll>
         <Header title={d.tabs.track} />
         <View style={styles.gate}>
           <View style={[styles.gateIcon, { backgroundColor: palette.primarySoft }]}>
@@ -74,7 +74,7 @@ export default function TrackScreen() {
   const list = orders.data ?? [];
 
   return (
-    <Screen>
+    <Screen edges={{ bottom: false }}>
       <Header title={d.track.title} subtitle={user?.name || undefined} />
 
       {orders.loading ? (
