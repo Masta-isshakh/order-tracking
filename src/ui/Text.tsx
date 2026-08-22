@@ -46,6 +46,13 @@ export const Text = ({
 
   return (
     <RNText
+      /*
+       * Respect the reader's font-size setting, but stop short of the 2–3x the
+       * OS allows: several controls here are fixed-height by design (the OTP
+       * boxes, the header row, the tab bar), and past roughly this point the
+       * text clips instead of growing. Pass the prop explicitly to override.
+       */
+      maxFontSizeMultiplier={1.4}
       {...rest}
       style={[
         typography[variant] as TextStyle,

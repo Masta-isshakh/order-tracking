@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   KeyboardAvoidingView,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -82,10 +81,19 @@ export const Screen = ({
       style={[styles.root, { backgroundColor: palette.bg, direction: dir, paddingTop }, style]}
     >
       <StatusBar style={palette.mode === 'dark' ? 'light' : 'dark'} />
+      {/*
+        'padding' on Android too, not just iOS. Leaving it undefined there used
+        to be right, because `adjustResize` shrank the window and the layout
+        followed. It no longer does: React Native calls `enableEdgeToEdge()` for
+        any app targeting SDK 35+, which sets `decorFitsSystemWindows` to false,
+        and Android then stops resizing for the keyboard and expects the app to
+        handle the IME inset itself. Without this, the keyboard covers whatever
+        sits at the bottom — the chat composer, the last field of a form.
+      */}
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? paddingTop : 0}
+        behavior="padding"
+        keyboardVerticalOffset={paddingTop}
       >
         {scroll ? (
           <ScrollView

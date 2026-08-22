@@ -2,7 +2,6 @@ import React from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -46,7 +45,8 @@ export const Sheet = ({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // See the note in Screen.tsx: Android no longer resizes for the keyboard.
+        behavior="padding"
       >
         <Pressable
           style={[styles.backdrop, { backgroundColor: palette.overlay }]}

@@ -33,6 +33,9 @@ export default function StaffTabs() {
         tabBarActiveTintColor: palette.primary,
         tabBarInactiveTintColor: palette.textFaint,
         tabBarStyle,
+        // Otherwise the bar sits on top of the keyboard, stealing a row of a
+        // short screen and putting tab targets right above the keys.
+        tabBarHideOnKeyboard: true,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         sceneStyle: { backgroundColor: palette.bg },
       }}
