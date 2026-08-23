@@ -92,8 +92,11 @@ createChallengeFn.addToRolePolicy(
  * SMS destination registry
  *
  * The sandbox APIs are account-level, so they take no resource ARN. Scoped to
- * exactly the calls the admin screens make — notably NOT sns:Publish, so a
- * flaw here could never be used to send messages.
+ * exactly the calls the admin screens make.
+ *
+ * This role can send SMS, because registering a destination number is what
+ * delivers its verification text. It is only reachable from the admin-only
+ * screens, and the recipient is always a number the caller just typed.
  *
  * Both action families are granted deliberately. The SDK still exposes these as
  * `...SMSSandbox...` commands on the SNS client, but AWS now serves them from
@@ -115,6 +118,10 @@ backend.smsRegistry.resources.lambda.addToRolePolicy(
       'sms-voice:DescribeVerifiedDestinationNumbers',
       'sms-voice:CreateVerifiedDestinationNumber',
       'sms-voice:SendDestinationNumberVerificationCode',
+      // Registering a number is what delivers its verification text, and that
+      // last hop is authorised as SendTextMessage. Without it the number is
+      // created and the SMS never goes out.
+      'sms-voice:SendTextMessage',
       'sms-voice:VerifyDestinationNumber',
       'sms-voice:DeleteVerifiedDestinationNumber',
     ],
@@ -135,6 +142,7 @@ backend.userManager.resources.lambda.addToRolePolicy(
       'sms-voice:DescribeVerifiedDestinationNumbers',
       'sms-voice:CreateVerifiedDestinationNumber',
       'sms-voice:SendDestinationNumberVerificationCode',
+      'sms-voice:SendTextMessage',
     ],
     resources: ['*'],
   }),

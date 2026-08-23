@@ -72,8 +72,16 @@ export default function SmsNumbersScreen() {
    * session, telling the admin to fix something that is already fixed.
    */
   const refreshRegistry = registry.refresh;
+  const firstFocus = useRef(true);
   useFocusEffect(
     React.useCallback(() => {
+      // The hook already loads on mount, so refetching on the first focus would
+      // fire two calls back to back — and these read APIs allow roughly one a
+      // second, which is enough to throttle the screen on open.
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        return;
+      }
       void refreshRegistry();
     }, [refreshRegistry]),
   );

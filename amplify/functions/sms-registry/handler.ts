@@ -54,7 +54,15 @@ const explain = (err: unknown): Result => {
   if (name === 'ResourceNotFoundException') {
     return fail('NOT_FOUND', 'That number is not in the list. Add it first.');
   }
-  if (name === 'ThrottledException' || name === 'TooManyRequestsException') {
+  // PinpointSmsVoiceV2 returns this as plain 'Throttling'; the older SNS
+  // surface used the two longer names. Its read APIs allow only about one
+  // call a second, so this is reachable just by reopening the screen.
+  if (
+    name === 'Throttling' ||
+    name === 'ThrottlingException' ||
+    name === 'ThrottledException' ||
+    name === 'TooManyRequestsException'
+  ) {
     return fail('THROTTLED', 'Too many attempts. Wait a minute and try again.');
   }
   if (name === 'AuthorizationErrorException') {
