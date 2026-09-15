@@ -1,86 +1,125 @@
-# Fontain — 4 × 10s Omni Flash prompts (Qatari Arabic VO)
+# Fontain — 4 × 10s Omni Flash prompts (FACELESS, Qatari Arabic VO)
 
-Story arc: Problem → Website + domain → Google Business Profile + Search Console → Result + CTA.
-Same presenter and same office in all four clips so they cut together as one 40s ad.
+One 40-second ad in four clips. No faces anywhere. Hands, screens, Doha streets, and a
+Qatari voice-over talking like a friend. Story: Problem → Offer + price → Guarantee → CTA.
 
-## CHARACTER BLOCK (paste unchanged into every prompt for consistency)
+## SHARED BLOCKS (paste unchanged into every prompt)
 
-Qatari man in his early 30s, neatly trimmed short beard, crisp white thobe, white ghutra with black agal, calm confident face, natural skin texture with visible pores, no makeup look, relaxed posture, speaks directly to camera like he is talking to a friend.
+[STYLE] Ultra-realistic live-action footage, vertical 9:16, 4K, 24 fps, shot on a full-frame
+cinema camera with a 35mm and 85mm macro look, shallow depth of field, natural available light,
+true-to-life skin and fabric texture, subtle handheld micro-movement, neutral color grade with
+soft warm highlights, no film grain overlay, no HDR glow, no stock-footage feel.
 
-## SETTING BLOCK (paste unchanged into every prompt)
+[FACELESS] Absolutely no faces on screen at any moment. Only hands, forearms, objects, screens,
+and environments. Any person present is cropped at the shoulders, seen from behind, or fully out
+of focus. Hands are those of a Qatari man: white thobe sleeve visible at the wrist, a simple
+steel watch, natural skin texture.
 
-Modern minimalist office in Doha, floor-to-ceiling window with soft morning daylight, West Bay skyline softly out of focus in the background, light oak desk with a MacBook and an iPhone, one small plant. Vertical 9:16, 4K, 24 fps, 35mm lens look, shallow depth of field, eye-level, subtle handheld micro-movement, natural color grade, no over-saturation, no film grain overlay.
+[SCREENS] Phone and laptop screens are real modern UI: Google search, Google Maps, WhatsApp,
+a clean website. English UI text only. No Arabic text rendered on any screen or surface.
 
-## AUDIO BLOCK (paste unchanged into every prompt)
+[AUDIO] Voice-over in Qatari Gulf Arabic dialect, male, early 30s, speaking the way a friend
+gives you advice: relaxed, confident, sincere, natural pauses, never a TV announcer. Ambient
+sound matches each scene (café murmur, keyboard, street, phone vibration). No music.
 
-Dialogue in Qatari Gulf Arabic dialect, male voice, natural conversational pace, warm and confident, not a TV announcer. Precise lip-sync to the dialogue. Ambient: quiet room tone, faint distant traffic, soft keyboard taps when he uses the laptop. No background music.
-
-## NEGATIVE (paste into every prompt)
-
-No on-screen Arabic text rendered by the model, no subtitles, no logos, no extra fingers, no warped hands, no distorted face when turning, no cartoon look, no stock-footage feel, no jump in identity between shots.
-
----
-
-## CLIP 1 — THE PROBLEM (0–10s)
-
-**Prompt:**
-[CHARACTER BLOCK] [SETTING BLOCK]
-0–3s: Medium close-up. He holds his iPhone toward the camera, screen showing a Google search results page with no useful result, and gives a small knowing shrug.
-3–7s: He lowers the phone, leans slightly toward the lens, speaks.
-7–10s: Slow push-in to a tight close-up on his face as he finishes the question, one eyebrow raised, slight pause at the end.
-Dialogue (Qatari Arabic): «زبونك يدوّر عليك في قوقل... وما يلقاك. تدري كم زبون خسرته اليوم بس لأن ما عندك موقع؟»
-[AUDIO BLOCK] [NEGATIVE]
-
-**Translation for QA:** "Your customer searches for you on Google… and can't find you. Do you know how many customers you lost today just because you don't have a website?"
+[NEGATIVE] No faces, no eyes, no mouths, no on-screen Arabic text, no subtitles, no logos,
+no watermarks, no extra fingers, no warped hands, no fake plastic-looking UI, no cartoon or
+3D-render look, no lens flares, no slow-motion cliché.
 
 ---
 
-## CLIP 2 — THE WEBSITE + DOMAIN (10–20s)
+## CLIP 1 — THE QUESTION (0–10s)
 
-**Prompt:**
-[CHARACTER BLOCK] [SETTING BLOCK]
-0–3s: Medium shot. He turns the MacBook toward the camera; the screen shows a clean modern restaurant-style website scrolling smoothly, mobile and desktop mockups side by side.
-3–7s: He taps the browser address bar, camera racks focus from his face to the screen and back, he speaks with a relaxed smile.
-7–10s: He picks up the iPhone showing the same website in mobile view with a green WhatsApp button, holds both up briefly, then looks at camera.
-Dialogue (Qatari Arabic): «إحنا نسوّي لك موقع احترافي بدومين باسمك، سريع، يشتغل على الجوال، ومربوط بالواتساب مباشرة.»
-[AUDIO BLOCK] [NEGATIVE]
+[STYLE] [FACELESS] [SCREENS]
+0–4s: Macro over-the-shoulder POV at a café table in Doha, warm afternoon light, a small cup
+of karak in the corner of frame. A Qatari man's hand holds an iPhone and types a local shop
+name into Google. The results load: competitors, a delivery app, a map, but not the shop itself.
+The thumb pauses, scrolls once, stops.
+4–7s: Slow rack focus from the phone to the window behind it: a Doha street, a small shop front
+with its lights on and nobody walking in.
+7–10s: Slow push-in on the empty doorway, hold for a clean end frame.
+Voice-over (Qatari Arabic): «خلني أسألك سؤال. لو زبون دوّر على محلك في قوقل الحين... بيلقاك؟
+ولا بيلقى منافسك؟ وايد محلات تخسر زباين كل يوم، بس لأن ما عندها موقع.»
+[AUDIO] [NEGATIVE]
 
-**Translation for QA:** "We build you a professional website with a domain in your name, fast, works on mobile, and connected directly to WhatsApp."
-
----
-
-## CLIP 3 — GOOGLE BUSINESS PROFILE + SEARCH CONSOLE (20–30s)
-
-**Prompt:**
-[CHARACTER BLOCK] [SETTING BLOCK]
-0–3s: Over-the-shoulder shot of the MacBook. Screen shows a Google Maps business listing with a red pin, star rating and photos; he points at it with one finger.
-3–6s: Cut to medium shot facing camera; behind him, out of focus, the laptop screen shows a Google Search Console-style dashboard with a rising performance graph.
-6–10s: He counts two points on his fingers as he speaks, then gives a small confident nod on the last word.
-Dialogue (Qatari Arabic): «ونسجّل نشاطك في Google Business Profile، ونربطه بـ Search Console، عشان تطلع أول ما يدوّرون عليك.»
-[AUDIO BLOCK] [NEGATIVE] Keep the English product names "Google Business Profile" and "Search Console" pronounced in English inside the Arabic sentence.
-
-**Translation for QA:** "And we register your business on Google Business Profile and connect it to Search Console, so you show up the moment they search for you."
+QA translation: "Let me ask you a question. If a customer searched for your shop on Google
+right now... would he find you? Or find your competitor? A lot of shops lose customers every
+day, just because they don't have a website."
 
 ---
 
-## CLIP 4 — THE RESULT + CTA (30–40s)
+## CLIP 2 — THE OFFER AND THE PRICE (10–20s)
 
-**Prompt:**
-[CHARACTER BLOCK] [SETTING BLOCK]
-0–3s: Close-up on the iPhone in his hand: a Google search, a business result appears at the top, thumb taps it, the website opens, thumb taps the WhatsApp button, a chat opens. Fast but readable.
-3–7s: Cut to medium close-up, he looks up from the phone to the camera with a genuine smile and speaks.
-7–10s: He slowly raises the phone toward the lens as an invitation, holds it steady on the last word, gentle push-in, hold for a clean end frame.
-Dialogue (Qatari Arabic): «النتيجة؟ زبون يدوّر، يلقاك، ويطلب بضغطة وحدة. راسلنا على الواتساب ونرسل لك تصوّر مجاني.»
-[AUDIO BLOCK] [NEGATIVE]
+[STYLE] [FACELESS] [SCREENS]
+0–3s: Top-down macro of hands on a MacBook keyboard in a bright minimalist Doha office, daylight
+from a large window. On screen a clean bilingual-style website for a local business comes
+together: hero image, menu section, a green WhatsApp button. Confident, fast, precise typing.
+3–6s: Quick cuts, each one second: a domain registration confirmation page; a Google Maps
+business listing with a red pin on Doha, star rating and photos; a Google Search Console-style
+dashboard with a rising performance graph.
+6–10s: The same hands slide an iPhone into frame showing the finished site in mobile view, thumb
+scrolls it smoothly, then taps the WhatsApp button and a chat opens. Hold steady on the phone
+for a clean end frame with empty space at the top for a price overlay in editing.
+Voice-over (Qatari Arabic): «نسوّي لك كل شي من البداية للنهاية: موقع احترافي، دومين باسمك،
+حسابك في قوقل، و SEO عشان تطلع أول. وكل هذا بألفين ريال بس... شامل كل شي.»
+[AUDIO] [NEGATIVE]
 
-**Translation for QA:** "The result? A customer searches, finds you, and orders with one tap. Message us on WhatsApp and we'll send you a free concept."
+QA translation: "We do everything for you from start to finish: a professional website, a domain
+in your name, your Google profile, and SEO so you show up first. And all of this for only two
+thousand riyals... everything included."
+
+---
+
+## CLIP 3 — THE GUARANTEE (20–30s)
+
+[STYLE] [FACELESS] [SCREENS]
+0–4s: Medium shot across a light oak desk, Doha skyline softly out of focus through the window
+behind. A pair of hands turns a MacBook around toward the camera to present the finished website,
+the way you would show it to a client. The screen is crisp and the site looks premium.
+4–7s: Cut to close-up: a second pair of hands (the client, cropped at the shoulders) reaches in,
+scrolls the site on the trackpad, then rests a hand flat on the desk in a relaxed, satisfied way.
+7–10s: Close-up over the desk of a firm handshake between the two men, white thobe sleeves,
+warm daylight. Hold the handshake for a clean end frame.
+Voice-over (Qatari Arabic): «وأقولها لك بكل ثقة: بنسوّي لك شي يفرّحك. وإذا ما عجبتك النتيجة...
+ما تدفع. ولا ريال. صدقني، ما بتلقى أحد يسوّي مواقع بهالمستوى.»
+[AUDIO] [NEGATIVE]
+
+QA translation: "And I'll say it with full confidence: we'll build you something that makes you
+happy. And if you don't like the result... you don't pay. Not one riyal. Trust me, you won't
+find anyone who builds websites at this level."
+
+---
+
+## CLIP 4 — THE CALL TO ACTION (30–40s)
+
+[STYLE] [FACELESS] [SCREENS]
+0–3s: Close-up of an iPhone lying on a wooden desk next to a cup of Arabic coffee. It vibrates
+once and lights up. A hand picks it up.
+3–6s: The thumb opens WhatsApp, taps a business chat, types a short message and hits send. The
+sent message bubble appears with two ticks. Natural thumb movement, real UI.
+6–10s: Cut to a wide golden-hour shot of the Doha Corniche and West Bay skyline, slow gentle
+drift as if from a gimbal, warm sky, calm water. Hold for a clean end frame with clear space in
+the lower third for a logo and WhatsApp number overlay in editing.
+Voice-over (Qatari Arabic): «لا تتردد. الاستشارة مجانية، وما تخسر شي. راسلنا على الواتساب
+الحين... وبنعطيك شي مختلف. شي out of the box.»
+[AUDIO] [NEGATIVE]
+
+QA translation: "Don't hesitate. The consultation is free, and you lose nothing. Message us on
+WhatsApp now... and we'll give you something different. Something out of the box."
 
 ---
 
 ## PRODUCTION NOTES
 
-1. **Consistency:** generate Clip 1 first, then reuse its first frame (or the same seed) as the reference image for clips 2–4. Identity drift between clips is the most common failure.
-2. **Arabic speech:** if the model's Qatari pronunciation is off, generate the video with the same prompt but muted, record or generate the voice separately, and lip-sync it. The dialogue is 18–22 words per clip, which fits 10 seconds at a natural pace.
-3. **Arabic on screen:** video models render Arabic letters badly. Keep all Arabic captions, the Fontain logo, and the WhatsApp number as overlays added in editing (CapCut / Premiere), not inside the generation.
-4. **Screens:** if the laptop/phone UI comes out blurry or fake, generate the clip with a plain screen and composite a real screen recording of one of your sites over it.
-5. **Aspect ratio:** 9:16 for Instagram Reels / TikTok / Snapchat. Re-render at 16:9 only if you need YouTube.
+1. **Faceless is your advantage.** No lip-sync needed, so generate the four clips MUTED and
+   produce the voice-over separately with a Gulf/Qatari Arabic voice, then lay it under the
+   footage. You get perfect dialect and can re-record a line without re-rendering video.
+2. **Word count is tuned:** 19–24 words per clip, which sits at 9–10 seconds at a relaxed
+   conversational pace. If a line runs long, slow the video 5% rather than cutting words.
+3. **Add in editing, never in generation:** the "2,000 ريال شامل كل شي" price card on clip 2,
+   the Fontain logo and WhatsApp number on clip 4, and any Arabic captions. Video models
+   render Arabic letters badly.
+4. **Screens:** if any UI looks fake, generate that shot with a plain dark screen and composite
+   a real screen recording of one of your sites over it. Realistic screens are what sell this.
+5. **Music:** add a soft minimal bed at low volume in editing, ducked under the voice.
+6. **Format:** 9:16 for Reels, TikTok, Snapchat. Export a 1:1 crop for the feed if needed.
