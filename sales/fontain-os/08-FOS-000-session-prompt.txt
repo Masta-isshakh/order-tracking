@@ -1,0 +1,511 @@
+You are executing task FOS-000 "Repository Bootstrap" for Fontain OS in the repository dadegh5545-droid/fontain-os (already checked out in this session). Work ONLY on branch `feature/FOS-000-repository-bootstrap` (create it from `main` if it does not exist; if `main` has no commits, create the branch as the first branch). Then open a Pull Request to `main`. Do NOT merge.
+
+STRICT BOUNDARIES (do not cross any of these; if you believe you must, stop and print `DECISION REQUIRED` with reason and options instead):
+- No AWS deployment, no Amplify backend, no `amplify/` code, no Cognito, no secrets, no `.env` values.
+- No `shared/enums.ts`, no i18n implementation (those are FOS-001 and FOS-002).
+- Do NOT start FOS-001 or any later task.
+- Do NOT touch any other repository.
+- Do not add libraries beyond: next, react, react-dom, typescript, eslint (+ next config), prettier, tailwindcss (+ postcss/autoprefixer as required by the Tailwind version you install), and vitest is NOT needed in this task. If Next.js scaffolding pulls in its standard peer packages, that is fine.
+
+DELIVERABLES (all must exist in the PR):
+1. Next.js App Router project (latest stable Next.js), TypeScript with `"strict": true`, ESLint (next/core-web-vitals + typescript), Prettier (with a `.prettierrc` and `npm run format:check`), Tailwind CSS. Page `/` renders the text "Fontain OS".
+2. Repository structure exactly as in docs/implementation-plan.md section 2, creating empty folders with a short `README.md` (2-3 lines, in Arabic with English identifiers) in each: `app/`, `src/features/`, `src/components/ui/`, `src/components/layout/`, `src/lib/`, `src/i18n/`, `amplify/` (README only, no code), `shared/` (README only, no enums), `scripts/`, `tests/`, `docs/`, `.github/`.
+3. `.gitignore` covering: node_modules, .next, out, .env*, amplify_outputs.json, .amplify/, coverage, *.log, .DS_Store.
+4. `README.md` (Arabic + English identifiers): what Fontain OS is, stack, how to run locally, how to read docs, link to CONTRIBUTING.md and AGENTS.md.
+5. `AGENTS.md`: rules for Claude Code and developers. Must include verbatim the "DECISION REQUIRED" rule block found in docs/implementation-plan.md section 9, the folder ownership rule (Dev A owns amplify/, scripts/, shared/; Dev B owns app/, src/), "one task -> one branch -> one PR", branch naming `feature/FOS-<id>-<slug>`, never commit secrets or amplify_outputs.json, schema changes are additive only, and the AWSJSON rule (json fields written via toJsonField / parseJsonArray) as a forward note.
+6. `CONTRIBUTING.md`: the Git workflow (section 6 of implementation plan) and Definition of Done (section 7).
+7. `docs/DECISIONS.md`, `docs/blueprint.md`, `docs/data-schema.md`, `docs/sprints/sprint-0.md`, `docs/sprints/sprint-1.md`, `docs/implementation-plan.md`: copy the content given below VERBATIM (do not summarize, do not translate, do not reformat). Add `docs/README.md` listing them.
+8. `.github/workflows/ci.yml`: on pull_request and push to main; Node 20; `npm ci`; `npm run typecheck`; `npm run lint`; `npm run format:check`; `npm run build`. Name the job `ci`.
+9. `.github/pull_request_template.md`: sections: Task ID, What changed, How it was tested (paste script output), Screenshots (AR + EN), Definition of Done checklist (from CONTRIBUTING.md).
+10. `.github/CODEOWNERS`: `amplify/ scripts/ shared/` -> @dadegh5545-droid, `app/ src/` -> @dadegh5545-droid, `docs/ AGENTS.md` -> @dadegh5545-droid (placeholders to be edited when devs join).
+11. `package.json` scripts: dev, build, start, lint, typecheck (`tsc --noEmit`), format, format:check.
+
+VERIFY before pushing: run `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm run build` locally and make sure all pass. Fix anything that fails.
+
+Then: commit with message starting `FOS-000: repository bootstrap`, push the branch, open a PR to `main` titled `FOS-000: Repository Bootstrap` whose body follows the PR template, and report the PR URL. After the PR is open, STOP. Do not start any other task.
+
+==================== DOCUMENTS TO COPY VERBATIM ====================
+
+
+----- FILE: docs/DECISIONS.md -----
+# Fontain OS — سجل القرارات
+
+آخر تحديث: 2026-09-17
+
+## المنتج
+- D-01 الاسم أثناء التطوير: **Fontain OS** (ليس Branding نهائيًا).
+- D-02 يُبنى لاستخدام Fontain Digital Solutions أولًا. لا SaaS الآن.
+- D-03 كل البيانات تحت `Organization` واحدة مُهيأة مسبقًا (seed). لا إعدادات لكل مؤسسة، لا تبديل، لا فوترة. الباب مفتوح لتعدد المؤسسات لاحقًا بدون إعادة كتابة.
+- D-04 Client Workspace هو مصدر الحقيقة الوحيد لكل عميل.
+- D-05 Decision Inbox هو الصفحة الرئيسية للإدارة.
+- D-06 **AI suggests, Human approves.** الـAI يكتب في `Suggestion` فقط ولا يعتمد أي `DecisionItem`. مفروض بالصلاحيات في الخادم.
+- D-07 V1 يجب أن يكون مفيدًا من أول Lead ويُستخدم يوميًا.
+- D-08 App Factory: Fontain OS يدير دورة حياة المشروع التقني فقط (قالب، مستودع، مرحلة، روابط، حالة بناء، اعتماد). GitHub + Claude Code + المطورون ينفذون الكود. لا IDE، لا تخزين كود. حقول App Factory جزء من `Project` لا كيان مستقل.
+
+## الفريق والصلاحيات
+- D-10 الفريق الحالي 3 شركاء، الثلاثة `OWNER`.
+- D-11 الأدوار في البنية: `OWNER / MANAGER / STAFF / CLIENT`. لا صلاحيات على مستوى الحقول في V1.
+- D-12 مراجعة المهام: Reviewer اختياري على المهمة، وإلا منشئ المهمة، وأي OWNER يستطيع المراجعة.
+- D-13 لا `hourlyRate`، لا Time Tracker، لا `actualHours` في V1. ربح المشروع = الدفعات المستلمة − مصاريف المشروع.
+
+## التقنية
+- D-20 الواجهة: Next.js App Router واحد بمنطقتين `/app` (الفريق) و`/portal` (العميل). Tailwind CSS. لا تطبيق جوال في V1.
+- D-21 الخلفية: Amplify Gen 2 + Cognito + AppSync + DynamoDB + S3 + Lambda، بنفس أنماط مشروع Stars.
+- D-22 الهوية: دخول بالهاتف وOTP للفريق والعملاء (منقول من Stars بالنسخ). خاصية `custom:organizationId` على المستخدم.
+- D-23 كل تغيير حالة مهم يمر عبر Custom Mutation (Lambda) تكتب التغيير + `ActivityLog` + `DecisionItem` في خطوة واحدة. لا تحديث مباشر للحالات من الواجهة.
+- D-24 عربي + إنجليزي + RTL/LTR من اليوم الأول. نمط `en.ts`/`ar.ts` المُطبَّع.
+- D-25 العملة QAR فقط. لا ضرائب في V1 (حقل ضريبة فارغ في البنية).
+- D-26 AWS Region: البقاء على `ap-south-1` (تم التحقق: Amplify Hosting SSR لـNext.js متاح فيها، وكل الخدمات المطلوبة). لا نقل بلا سبب تقني.
+- D-27 الاستضافة: Amplify Hosting. إعادة تقييم Vercel فقط عند سبب تقني حقيقي.
+- D-28 مستودع مستقل `fontain-os`. يُستفاد من Stars بالنسخ (OTP، i18n، RTL، utilities) لا بالربط.
+- D-29 مفتاح Claude API مملوك لـFontain، مخزّن في AWS (آلية Amplify `secret()` / SSM أو Secrets Manager)، لا على أي جهاز. تتبع الاستهلاك بـ`AiUsage` لكل ميزة، سقف شهري اختياري من إعدادات OWNER، وعند بلوغه تتوقف الاقتراحات فقط.
+- D-30 الإشعارات في V1 داخل النظام فقط: Decision Inbox، My Tasks، شارات. لا بريد ولا واتساب.
+- D-31 لا Migration في V1. قاعدة بيانات نظيفة.
+- D-32 تغييرات الـschema **إضافية فقط**: لا حذف ولا إعادة تسمية حقل في نفس الإصدار.
+
+## النطاق
+- D-40 داخل V1: Leads، Interactions، Clients، Projects (+App Factory fields)، Playbooks، Tasks مع مراجعة، Comments، Attachments، Approvals، Service Catalog، Proposals عبر البوابة، Invoices، Payments، Expenses، Renewals المبسطة، Decision Inbox، Suggestions (3 أنواع)، AiUsage، ActivityLog، Client Portal.
+- D-41 خارج V1: WhatsApp Cloud API، Google/Meta Ads، Time tracking، Workload، تكامل GitHub Webhooks، محاسبة كاملة، تطبيق جوال، PDF للعروض، Snooze، مهام مقترحة من AI، ملفات على مستوى Client، تعدد جهات اتصال للعميل، تجديد يولّد فواتير تلقائيًا.
+- D-42 جدول الدفع الافتراضي 50% عند البدء و50% قبل الإطلاق، قابل للتعديل لكل عرض.
+- D-43 الـAI في Sprint 5 وليس في البداية. النظام يجب أن يكون مفيدًا بالكامل بدون AI.
+
+## سير العمل
+- D-50 `main` محمي: PR إجباري + مراجع واحد + CI أخضر. لا دفع مباشر. Squash merge فقط.
+- D-51 **One Task → One Branch → One PR.** الاستثناء الوحيد: `FOS-000 Repository Bootstrap`.
+- D-52 لكل مطور sandbox خاص. `main` وحده يُنشر للإنتاج عبر Amplify Console بدور خدمة.
+- D-53 **لا access keys للإنتاج على أي جهاز**، حتى OWNER. المطورون صلاحيات sandbox فقط. الإنتاج عبر Amplify service role، وأي عمل يدوي على الإنتاج بجلسة SSO قصيرة العمر من IAM Identity Center. توصية: حساب AWS منفصل للـsandboxes.
+- D-54 Claude Code يعمل على فروع الميزات فقط. تسمية: `feature/FOS-<id>-<slug>`.
+- D-55 قاعدة **DECISION REQUIRED** في `AGENTS.md`: عند الحاجة لتغيير معماري، أو Model غير موجود في المواصفة، أو مكتبة رئيسية جديدة، أو تغيير قرار في DECISIONS.md، أو توسيع النطاق: يتوقف Claude Code ويطبع `DECISION REQUIRED` بالسبب والخيارات والتوصية، ولا ينفذ حتى يعتمد إنسان.
+
+## افتراضات معتمدة ضمنيًا (قابلة للتغيير بكلفة دقائق)
+- مراحل الـLead: `NEW → CONTACTED → QUALIFIED → PROPOSAL_SENT → WON / LOST`.
+- حالات المهمة: `NEW → ASSIGNED → IN_PROGRESS → WAITING → REVIEW → APPROVED → DONE`.
+- فئات المصاريف: `DOMAIN, HOSTING, CONTRACTOR, ADS, OTHER`.
+- تكرار الهاتف في Leads يحذّر ولا يمنع.
+- عميل واحد = رقم هاتف واحد للبوابة.
+
+----- END FILE: docs/DECISIONS.md -----
+
+
+----- FILE: docs/blueprint.md -----
+# Fontain OS — Final Product Blueprint (معتمد مبدئيًا)
+
+## A. System Map
+
+خط واحد يمشي عليه كل عميل، وحوله ثمانية أشياء بدور واحد لكل منها:
+
+- **Client Workspace**: الملف الذي يحتوي كل شيء عن العميل.
+- **Decision Inbox**: برج المراقبة. كل ما يحتاج إنسانًا يظهر هنا فقط.
+- **ActivityLog**: الذاكرة. كل خطوة تكتب سطرًا، ولا يُمسح.
+- **AI Suggestions**: المستشار. يقرأ ويقترح ولا يلمس.
+- **Finance**: من قبول العرض إلى الربح.
+- **Client Portal**: نافذة العميل على جزئه فقط.
+- **App Factory**: القسم التقني داخل Project.
+- **GitHub + Claude Code**: خارج النظام، ينفذان الكود.
+
+```
+                    ┌──────────── DECISION INBOX ────────────┐
+                    └──▲──────▲──────▲──────▲──────▲──────▲──┘
+LEAD ─► QUALIFICATION ─► PROPOSAL ─► CLIENT ─► PROJECT ─► TASKS ─► DELIVERY ─► PAYMENT ─► RENEWAL
+  │                       │           └────────────── CLIENT WORKSPACE ──────────────────┘
+  │                       ├──► CLIENT PORTAL (عرض، حالة، اعتمادات، فواتير)
+  │                       └──► FINANCE: Proposal → Invoices → Payments → Expenses → Profit → Renewals
+  └── AI SUGGESTIONS يقرأ الكل ويكتب Suggestion فقط ──► Inbox
+  └── كل انتقال ──► ACTIVITY LOG
+PROJECT (تقني) ── App Factory fields داخل النظام ── GitHub repo خارج النظام
+```
+
+**التحكم بتكلفة الـAI:** كل استدعاء يحمل `featureKey` ويكتب `AiUsage`. `Organization.aiMonthlyLimit` اختياري. عند بلوغه: `paused`، تتوقف الاقتراحات فقط. المفتاح في AWS، تقرأه الـLambda فقط.
+
+## B. Role Map
+
+| القدرة | OWNER | MANAGER | STAFF | CLIENT |
+|---|---|---|---|---|
+| Decision Inbox | كامل | كامل عدا المالية | عناصره فقط | لا |
+| Leads | كل شيء | كل شيء | المُسندة له + إنشاء | لا |
+| Clients / Workspace | كل شيء | كل شيء | عملاء مشاريعه، قراءة + تفاعلات | لا |
+| Projects / Tasks | كل شيء | كل شيء | مهامه + قراءة مشروعه | لا |
+| مراجعة المهام | نعم | نعم | إذا سُمّي مراجعًا | لا |
+| Proposals | إنشاء + اعتماد + إرسال | نفسه | مسودة فقط | قبول / طلب تعديل |
+| Finance | كل شيء | قراءة + تسجيل دفعات ومصاريف | لا يرى المبالغ | فواتيره |
+| Settings كتالوج/Playbooks | نعم | نعم | لا | لا |
+| Settings فريق/أدوار | نعم | لا | لا | لا |
+| Settings AI (سقف/استهلاك) | نعم | قراءة | لا | لا |
+| حذف | نعم | لا | لا | لا |
+
+## C. Screen Map (14 شاشة)
+
+```
+LOGIN → OWNER/MANAGER → /app/inbox | STAFF → /app/tasks | CLIENT → /portal
+```
+القائمة الجانبية: Inbox · Leads · Clients · My Tasks · Finance · Settings.
+
+الفريق: Decision Inbox، Leads Board، Lead Detail، Proposal Builder، Clients، Client Workspace (نظرة عامة/مشاريع/تفاعلات/ملفات/مالية/سجل)، Project Detail (+App Factory)، Task Detail (لوحة جانبية)، My Tasks، Finance (فواتير/دفعات/مصاريف/تجديدات)، Settings.
+العميل: مشروعي، الاعتمادات، الملفات والفواتير.
+
+## D. Automation Map
+
+| حدث إنسان | النظام تلقائيًا |
+|---|---|
+| إنشاء Lead | followUpAt = +24h، ActivityLog، (Sprint 5) Suggestion رد أول → Inbox |
+| مرور موعد المتابعة | تنبيه محسوب + بطاقة حمراء |
+| طلب اعتماد عرض | DecisionItem للمالك |
+| اعتماد العرض | portalToken، Lead → PROPOSAL_SENT |
+| **العميل يقبل العرض** | **Client + Project + مهام من Playbook + Invoices حسب الجدول + ActivityLog + Inbox: NEW_CLIENT** |
+| العميل يطلب تعديل العرض | DecisionItem CLIENT_CHANGE_REQUEST |
+| تسجيل دفعة | إعادة حساب الفاتورة، المشروع "مموّل" عند الأولى |
+| مهمة → Review | DecisionItem TASK_REVIEW للمراجع |
+| اعتماد مهمة "مراجعة العميل" | Approval في البوابة بالرابط |
+| العميل يعتمد التسليم | إغلاق Approval، الفاتورة الثانية مستحقة |
+| العميل يطلب تعديل التسليم | مهمة تعديل + DecisionItem |
+| إغلاق مشروع | Renewals بعد سنة، حساب الربح، (Sprint 5) اقتراح ما بعد التسليم |
+| 30 يومًا على تجديد | DecisionItem RENEWAL_DUE |
+| فاتورة متأخرة / عميل بلا تفاعل 48h | تنبيه محسوب |
+| بلوغ سقف AI | إيقاف الاقتراحات فقط |
+
+لا يُؤتمت أبدًا: إرسال للعميل، تغيير سعر، تسجيل دفعة، حذف.
+
+## E. Human vs AI
+
+| Action | Human | Claude | Approval? |
+|---|---|---|---|
+| قراءة البيانات | نعم | قراءة فقط | لا |
+| مسودة رد أول | يعدّل ويرسل | يقترح | نعم |
+| ملخص عميل | يقرأ | يلخّص | لا (معلوماتي) |
+| مسودة عرض | يراجع | يقترح البنود | نعم |
+| إرسال العرض | هو فقط | لا | نعم |
+| السعر / الخصم | نعم | لا يقترح خصمًا | نعم |
+| إنشاء المهام | Playbook | لا | لا |
+| اعتماد مراجعة / DecisionItem | نعم | **مستحيل بالصلاحيات** | — |
+| أي كتابة خارج Suggestion | نعم | **مستحيل بالصلاحيات** | — |
+
+## F. V1 Final Boundary
+
+**محذوف من V1:** PDF للعروض (العرض صفحة في البوابة)، AppProduct ككيان (حقول في Project)، Snooze، Suggestion "مهام مقترحة"، File على Client، Renewal يولّد فواتير تلقائيًا، تعدد جهات الاتصال.
+
+**يبقى:** Leads، Interactions، Clients، Projects، Playbooks، Tasks+مراجعة، Catalog، Proposals عبر البوابة، Invoices/Payments/Expenses، Renewals مبسطة، Decision Inbox، ActivityLog، 3 أنواع Suggestion + AiUsage + سقف، Client Portal، عربي/إنجليزي.
+
+## G. Sprint Order (أسبوعان لكل Sprint)
+
+| Sprint | المحتوى | ما يصبح ممكنًا |
+|---|---|---|
+| 0 Foundation | المستودع، Amplify skeleton، Organization/UserProfile، OTP، Next.js، i18n/RTL، CI، حماية main، نمط Mutation+ActivityLog، نشر | الدخول بالهاتف |
+| 1 Leads | Leads، Interactions، Board، Detail، متابعات، سبب الخسارة | إدارة كل الـleads |
+| 2 Work | Clients، Workspace، Projects، Playbooks، Tasks، Comments، Files، My Tasks، مراجعة، Decision Inbox v1 | إدارة مشروع كامل |
+| 3 Sell | Catalog، Proposal Builder، Portal، أتمتة القبول | أول عميل يقبل من رابط |
+| 4 Money | Invoices، Payments، Expenses، Renewals، Finance، مالية المشروع | من دفع ومن عليه وكم ربحنا |
+| 5 AI | Suggestion، Lambda الـAI، Secrets، AiUsage/سقف، 3 أنواع، Inbox | الاقتراحات |
+| 6 Harden | تفعيل MANAGER/STAFF/CLIENT فعليًا، سكربتات اختبار، seed، أمن، إطلاق | استخدام يومي |
+
+## H. Day in the Life (ملخص)
+
+9:00 Owner يفتح Inbox: 5 عناصر. 9:20 يعتمد رد AI ويرسله من واتساب ويسجل تفاعلًا. 10:30 lead جديد يُضاف من الهاتف. 11:00 شريك يعمل من My Tasks وينقل مهمة إلى Review. 13:00 اعتماد المهمة يفتح Approval للعميل. 15:30 العميل يطلب تعديلًا من البوابة → مهمة تعديل. 16:00 تعديل واعتماد → الفاتورة الثانية مستحقة. 17:30 عرض جديد بمسودة AI يُعتمد ويُرسل. 18:00 Finance: مستحق لنا، متوقع الشهر، ربح المشروع.
+
+----- END FILE: docs/blueprint.md -----
+
+
+----- FILE: docs/data-schema.md -----
+# Fontain OS — Data Schema, Enums, Routes, Mutations (معتمد مبدئيًا)
+
+كل كيان يحمل `organizationId` إجباريًا مع فهرس ثانوي. لن يُكرر أدناه.
+
+## 1. الكيانات
+
+### الجذر
+| الكيان | الحقول الأهم | يرتبط بـ | يُنشأ |
+|---|---|---|---|
+| Organization | name, phone, defaultPaymentSchedule, aiMonthlyLimit, aiEnabledFeatures | الكل | seed مرة واحدة |
+| UserProfile | cognitoSub, name, phone, role, isActive, clientId | Organization, Client | يدويًا / تلقائيًا للعميل |
+
+### المبيعات
+| الكيان | الحقول الأهم | يرتبط بـ | يُنشأ |
+|---|---|---|---|
+| Lead | businessName, contactName, phone(E.164), category, source, sourceRef, stage, ownerId, followUpAt, lostReason, lostNote, notes, clientId | UserProfile, Client | يدويًا |
+| Interaction | leadId أو clientId, channel, direction, summary, occurredAt, createdById, externalId | Lead أو Client | يدويًا (WhatsApp API لاحقًا) |
+| Client | businessName, contactName, phone, category, status, leadId, portalUserId | Lead, UserProfile, Projects | تلقائيًا عند قبول العرض / يدويًا |
+
+### التنفيذ
+| الكيان | الحقول الأهم | يرتبط بـ | يُنشأ |
+|---|---|---|---|
+| Project | clientId, name, status, ownerId, playbookId, proposalId, startedAt, deliveredAt, closedAt, **App Factory:** productType, templateKey, repoUrl, appStage, previewUrl, productionUrl, buildStatus | Client, Playbook, Proposal, Tasks | تلقائيًا / يدويًا |
+| Playbook | name, productType, description, isActive | PlaybookSteps | Settings |
+| PlaybookStep | playbookId, order, title, description, estimatedDays, requiresClientApproval, defaultRole | Playbook | Settings |
+| Task | projectId, title, description, status, priority, ownerId, reviewerId, createdById, dueAt, order, playbookStepId, requiresClientApproval | Project, UserProfile | من Playbook / يدويًا |
+| Comment | taskId, authorId, body | Task | يدويًا |
+| Attachment | projectId أو taskId, s3Key, fileName, mimeType, size, uploadedById | Project أو Task | يدويًا |
+| Approval | projectId, type(PROPOSAL/DELIVERABLE), refId, status, previewUrl, clientNote, decidedAt | Project, Proposal/Task | تلقائيًا |
+
+### المال
+| الكيان | الحقول الأهم | يرتبط بـ | يُنشأ |
+|---|---|---|---|
+| Service | name(ar/en), description(ar/en), basePrice, isActive, defaultPlaybookId | Playbook | Settings |
+| Proposal | leadId أو clientId, status, title, language, items(json), total, paymentSchedule(json), validUntil, portalToken, createdById, approvedById, sentAt, acceptedAt | Lead/Client, Services, Project | يدويًا |
+| Invoice | clientId, projectId, proposalId, number, amount, dueAt, status, issuedAt, description | Client, Project, Proposal, Payments | تلقائيًا من القبول / يدويًا |
+| Payment | invoiceId, amount, paidAt, method, reference, recordedById | Invoice | يدويًا |
+| Expense | projectId, category, amount, description, paidAt, recordedById | Project | يدويًا |
+| Renewal | clientId, projectId, type, provider, ourCost, clientPrice, renewsAt, status | Client, Project | عند إغلاق المشروع / يدويًا |
+
+### التشغيل والذكاء
+| الكيان | الحقول الأهم | يرتبط بـ | يُنشأ |
+|---|---|---|---|
+| DecisionItem | type, title, refType, refId, requestedById, assigneeId, status, decidedById, decidedAt, rejectReason | أي كيان | تلقائيًا فقط |
+| Suggestion | type, refType, refId, content, featureKey, status, decisionItemId, usageId | أي كيان | الـAI فقط |
+| AiUsage | featureKey, requestedById, inputTokens, outputTokens, estimatedCost, occurredAt, month | Suggestion | تلقائيًا |
+| ActivityLog | refType, refId, action, actorId(أو SYSTEM/AI), summary, meta(json), occurredAt | أي كيان | تلقائيًا، لا تعديل ولا حذف |
+
+### العلاقات
+```
+Lead ──(1:1 بعد الفوز)──► Client ──(1:N)──► Project ──(1:N)──► Task ──(1:N)──► Comment
+Project/Task ──(1:N)──► Attachment      Project ──(1:N)──► Approval ──► Proposal أو Task
+Playbook ──(1:N)──► PlaybookStep ──(نسخة)──► Task
+Lead/Client ──(1:N)──► Proposal ──(1:N)──► Invoice ──(1:N)──► Payment
+Proposal ──(1:1 بعد القبول)──► Project      Project ──(1:N)──► Expense      Client ──(1:N)──► Renewal
+Suggestion ──(1:1)──► DecisionItem      Suggestion ──(1:1)──► AiUsage
+ActivityLog / DecisionItem ──(refType+refId)──► أي كيان
+```
+مشتق لا يُخزن: مدفوع الفاتورة، "متأخر"، تقدم المشروع، ربح المشروع، مستحق لنا، متوقع الشهر.
+
+## 2. الشكل التقني لـAmplify Gen 2
+- كل model: `organizationId: a.string().required()` + secondary index.
+- الصلاحيات: `allow.groups(['OWNER','MANAGER','STAFF'])` للفريق، `allow.group('CLIENT')` قراءة على ما يخص البوابة. الـLambdas: `allow.resource(fn)` مرة واحدة على مستوى الـschema.
+- الحقول المركبة `a.json()` تُكتب عبر `toJsonField()` وتُقرأ بـ`parseJsonArray()` (قاعدة AWSJSON من Stars).
+- الـEnums بـ`a.enum` في ملف مشترك واحد.
+- `a.belongsTo`/`a.hasMany` للعلاقات الثابتة. `refType + refId` بفهرس مركّب لـActivityLog/DecisionItem/Suggestion/Attachment/Interaction.
+- فهارس: Lead على stage/ownerId/followUpAt. Invoice على status+dueAt. Task على ownerId+status. DecisionItem على assigneeId+status. AiUsage على month.
+- Custom mutations: `a.mutation().arguments().returns().handler(a.handler.function(fn))`، قراءة اسم الحقل بـ`resolverFieldName(event)` (لا `event.info`). Lambda واحدة لكل مجموعة: leads, work, sales, finance, decisions.
+
+## 3. Enums
+- Role: OWNER, MANAGER, STAFF, CLIENT
+- LeadStage: NEW, CONTACTED, QUALIFIED, PROPOSAL_SENT, WON, LOST
+- LeadSource: INSTAGRAM, TIKTOK, WHATSAPP, REFERRAL, VIDEO_AD, GOOGLE, WALK_IN, OTHER
+- LostReason: NO_RESPONSE, NO_BUDGET, CHOSE_COMPETITOR, NOT_NOW, NOT_A_FIT, OTHER (OTHER يستلزم نصًا)
+- InteractionChannel: WHATSAPP, CALL, MEETING, EMAIL, OTHER · InteractionDirection: INBOUND, OUTBOUND
+- ClientStatus: ACTIVE, ARCHIVED
+- ProjectStatus: ACTIVE, ON_HOLD, DELIVERED, CLOSED, CANCELLED
+- AppStage: IDEA, REQUIREMENTS, SPEC, DESIGN, DEVELOPMENT, TESTING, PREVIEW, CLIENT_APPROVAL, DEPLOYED · BuildStatus: UNKNOWN, PASSED, FAILED
+- TaskStatus: NEW, ASSIGNED, IN_PROGRESS, WAITING, REVIEW, APPROVED, DONE · TaskPriority: LOW, NORMAL, HIGH, URGENT
+- ProposalStatus: DRAFT, PENDING_APPROVAL, SENT, CHANGES_REQUESTED, ACCEPTED, DECLINED
+- InvoiceStatus: ISSUED, PARTIALLY_PAID, PAID, VOID · PaymentMethod: BANK_TRANSFER, CASH, CARD, OTHER
+- ExpenseCategory: DOMAIN, HOSTING, CONTRACTOR, ADS, OTHER
+- ApprovalType: PROPOSAL, DELIVERABLE · ApprovalStatus: PENDING, APPROVED, CHANGES_REQUESTED
+- RenewalType: DOMAIN, HOSTING, MAINTENANCE, OTHER · RenewalStatus: UPCOMING, RENEWED, CANCELLED
+- DecisionType: SUGGESTION, TASK_REVIEW, PROPOSAL_APPROVAL, CLIENT_CHANGE_REQUEST, RENEWAL_DUE, NEW_CLIENT · DecisionStatus: OPEN, APPROVED, REJECTED
+- SuggestionType: LEAD_REPLY, PROPOSAL_DRAFT, CLIENT_SUMMARY · SuggestionStatus: PENDING, APPROVED, REJECTED
+"متأخر" ليس حالة، يُحسب من التاريخ.
+
+## 4. Routes
+```
+/                      توجيه حسب المجموعة
+/login                 هاتف + OTP
+/app                   → /app/inbox (OWNER/MANAGER) أو /app/tasks (STAFF)
+/app/inbox
+/app/leads             /app/leads/[id]
+/app/proposals/new?leadId=|clientId=    /app/proposals/[id]
+/app/clients           /app/clients/[id]  (+ /projects /interactions /files /finance /activity)
+/app/projects/[id]     (?task=[taskId] لوحة جانبية)
+/app/tasks             (?task=[taskId])   /app/tasks/[id]
+/app/finance           → /invoices | /payments | /expenses | /renewals   /app/finance/invoices/[id]
+/app/settings          → /organization | /services | /playbooks | /team | /ai
+/portal                → المشروع الوحيد أو القائمة
+/portal/projects/[id]  /portal/proposals/[token]  /portal/approvals/[id]  /portal/invoices
+```
+
+## 5. Custom Mutations (من | يغيّر | ActivityLog | DecisionItem)
+
+**Leads (Sprint 1):** createLead (الفريق | Lead NEW, followUpAt +24h | lead.created | لا) · updateLead (الفريق | الحقول الأساسية | lead.updated | لا) · moveLeadStage (الفريق | المرحلة عدا WON/LOST | lead.stage_changed | لا) · assignLead (OWNER/MANAGER، STAFF على نفسه | ownerId | lead.assigned | لا) · logInteraction (الفريق | Interaction + followUpAt + NEW→CONTACTED عند أول OUTBOUND | lead.interaction_logged | لا) · setLeadFollowUp (الفريق | followUpAt | lead.follow_up_set | لا) · closeLeadLost (الفريق | LOST + سبب إجباري | lead.lost | لا) · reopenLead (OWNER/MANAGER | LOST→CONTACTED | lead.reopened | لا)
+
+**Sales (Sprint 3):** convertLeadToClient (OWNER/MANAGER | Client+UserProfile، WON | lead.won, client.created | NEW_CLIENT) · submitProposalForApproval (الفريق | DRAFT→PENDING_APPROVAL | proposal.submitted | PROPOSAL_APPROVAL) · approveAndSendProposal (OWNER/MANAGER | SENT + portalToken، Lead→PROPOSAL_SENT | proposal.sent | يغلق) · respondToProposal (CLIENT عبر token | ACCEPTED/CHANGES_REQUESTED | proposal.accepted/changes_requested | CLIENT_CHANGE_REQUEST عند التعديل) · acceptProposal (SYSTEM | Client+Project+Tasks من Playbook+Invoices، Lead→WON | client.created, project.created, invoice.issued×n | NEW_CLIENT)
+
+**Work (Sprint 2):** createProject · createTask/assignTask · updateTaskStatus (المالك | ASSIGNED↔IN_PROGRESS↔WAITING) · submitTaskForReview (→REVIEW | TASK_REVIEW) · approveTask (المراجع/OWNER | APPROVED ثم DONE أو requestClientApproval) · returnTask (سبب إجباري) · requestClientApproval (Approval DELIVERABLE) · respondToApproval (CLIENT | عند التعديل مهمة تعديل + DecisionItem) · updateAppStage · closeProject (CLOSED + Renewals)
+
+**Finance (Sprint 4):** issueInvoice · recordPayment (Payment + إعادة حساب + ON_HOLD→ACTIVE) · voidInvoice (OWNER) · recordExpense · markRenewed (RENEWED + التالي بعد سنة)
+
+**Decisions & AI (Sprints 2/5):** resolveDecision (المكلّف/OWNER | APPROVED/REJECTED+سبب + الفعل المرتبط) · requestSuggestion (يتحقق من السقف، Claude، AiUsage + Suggestion | SUGGESTION)
+
+----- END FILE: docs/data-schema.md -----
+
+
+----- FILE: docs/sprints/sprint-0.md -----
+# Sprint 0 — Foundation (النسخة النهائية بعد FOS-000)
+
+الافتراض التقني: Tailwind CSS (خصائص منطقية تجعل RTL/LTR شبه مجاني).
+
+| ID | الاسم | المسؤول | يعتمد على | مكتمل عندما |
+|---|---|---|---|---|
+| **FOS-000** | Repository Bootstrap (الاستثناء الوحيد لقاعدة مهمة/فرع/PR) | Claude Code + Dev A | إنشاء المستودع يدويًا | Next.js + TS strict + ESLint + Prettier + Tailwind، هيكل المجلدات، `.gitignore`، `README.md`، `AGENTS.md` (بقاعدة DECISION REQUIRED)، `CONTRIBUTING.md`، `docs/` (القرارات، Blueprint، sprint-0، sprint-1)، CI أساسي (typecheck/lint/build)، قالب PR، `CODEOWNERS`. أخضر ومدموج |
+| FOS-001 | Shared enums & types | Dev A | 000 | `shared/enums.ts` كامل + اختبار اكتمال الترجمة |
+| FOS-002 | i18n foundation | Dev B | 000 | `en.ts`/`ar.ts` مُطبَّع، `useT()`، cookie، `lang`/`dir` على `<html>`، اختبار المفاتيح، تبديل بلا إعادة تحميل |
+| FOS-003 | App shell | Dev B | 002 | تخطيط `/app` (6 عناصر) و`/portal` و`/login` هياكل، RTL/LTR، 400px |
+| FOS-004 | Amplify backend skeleton | Dev A | 001 | `backend.ts` + Organization + UserProfile + storage فارغ، sandbox ينشر، outputs مستثنى من Git |
+| FOS-005 | Cognito phone OTP | Dev A | 004 | نقل auth/ والمحفزات وotp/ من Stars بالنسخ، نفس الضمانات، `test-auth-flow.mjs` ينجح |
+| FOS-006 | Groups, org attribute & seed | Dev A | 005 | المجموعات الأربع، `custom:organizationId`، `seed-org.mjs`، `seed-owner.mjs` |
+| FOS-007 | Custom mutation pattern & ActivityLog | Dev A | 004 | ActivityLog بلا كتابة مباشرة، `logActivity()`، `appsync.ts`، `updateOrganization` تكتب سجلًا |
+| FOS-008 | Frontend auth & role routing | Dev B | 003, 005 | دخول، جلسة، middleware يوجّه حسب المجموعة، خروج |
+| FOS-009 | Backend check & integration scripts | Dev A | 006, 007 | `check-backend.mjs`، `test-data-flows.mjs` بحالة updateOrganization، ينظفان |
+| FOS-010 | Amplify Hosting production | OWNER (Console) + Dev A (`amplify.yml`) | 008, 009 | main = إنتاج بدور خدمة، env من Console، seed مرة بجلسة SSO مؤقتة، check-backend ينجح على الإنتاج |
+| FOS-011 | Sprint 0 acceptance | الشركاء الثلاثة | 010 | 3 دخولات من الهواتف بالعربية والإنجليزية، ActivityLog يسجل من الإنتاج |
+
+**التوازي بعد FOS-000:**
+```
+Dev A:  001 → 004 → 005 → 006 → 007 → 009 ─┐
+Dev B:  002 → 003 ──────────► 008 (بعد 005) ─┼─► 010 (OWNER) → 011
+```
+A لا يلمس `app/` و`src/`. B لا يلمس `amplify/` و`shared/`.
+
+----- END FILE: docs/sprints/sprint-0.md -----
+
+
+----- FILE: docs/sprints/sprint-1.md -----
+# Sprint 1 — Leads + Interactions (مواصفة معتمدة مبدئيًا)
+
+## النطاق
+كيانا `Lead` و`Interaction`، قراءة `ActivityLog`، الـMutations الثمانية لمجموعة Leads، شاشتا `/app/leads` و`/app/leads/[id]`. لا AI. لا Clients. لا Proposals.
+
+## القواعد
+- الهاتف يُطبَّع إلى E.164 (`55123456` → `+97455123456`). غير القطري يُقبل إن بدأ بـ`+`.
+- هاتف مكرر في Lead غير LOST: تحذير بالاسم ورابط، لا منع.
+- `businessName` و`phone` إجباريان.
+- المالك الافتراضي = المنشئ.
+- `followUpAt` الافتراضي = الآن + 24h. متأخر = `followUpAt < now` والمرحلة ليست WON/LOST.
+- السحب حر بين NEW / CONTACTED / QUALIFIED / PROPOSAL_SENT. WON محجوز لـSprint 3. LOST من زر "إغلاق كخاسر" بسبب إجباري فقط.
+- أول Interaction من نوع OUTBOUND على Lead في NEW ينقله إلى CONTACTED تلقائيًا.
+- نموذج Interaction: channel، direction، summary (إجباري)، occurredAt (الآن)، "المتابعة التالية" اختياري يحدّث followUpAt في نفس الحفظ.
+- البحث في businessName وcontactName وphone. الفلاتر: المرحلة، المالك، المصدر، المتأخرون فقط، إظهار المغلقين.
+- الترتيب داخل العمود: المتأخرون أولًا ثم الأقرب موعدًا.
+- الجدول الزمني يدمج Interactions وActivityLog زمنيًا.
+
+## الواجهة
+**Leads Board:** شريط علوي (بحث + فلاتر كأزرار + زر "Lead جديد" بارز). أربعة أعمدة: جديد، تم التواصل، مؤهل، أُرسل العرض، بعدّاد. "فاز" و"خسر" مطويان عند "إظهار المغلقين". سحب بتحديث متفائل. نافذة "Lead جديد" بخمسة حقول.
+
+**Lead Card:** اسم النشاط عريض + دائرة حرفي المالك · اسم الشخص · شريحتا النشاط والمصدر · حبة المتابعة (رمادي مستقبلي، كهرماني اليوم، **أحمر مع حد أحمر للبطاقة** إن تأخر) · "آخر تواصل قبل X". لا أزرار على البطاقة.
+
+**Lead Detail:** رأس: الاسم، الشخص، الهاتف كرابط `wa.me`، النشاط، المصدر | قائمة المرحلة، قائمة المالك، أزرار: "سجّل تفاعلًا" (أساسي)، "حدد متابعة"، "المزيد" (إغلاق كخاسر، تعديل). زر "حوّل إلى عميل" لا يظهر في Sprint 1.
+الجسم عمودان: الأضيق (معلومات التواصل، الملاحظات تُحفظ عند الخروج من الحقل، المتابعة التالية) · الأعرض (الجدول الزمني).
+
+**Interaction section:** نموذج مضغوط دائم أعلى العمود: أيقونات القناة، مفتاح وارد/صادر، حقل "ماذا حدث؟"، سطر اختياري "المتابعة التالية" (غدًا، بعد 3 أيام، الأسبوع القادم، تاريخ)، حفظ. تحته القائمة من الأحدث: بطاقة لكل تفاعل (قناة، اتجاه، نص، من، متى)، وأحداث ActivityLog كسطور رمادية رفيعة بينها.
+
+**نافذة الإغلاق كخاسر:** قائمة أسباب إجبارية، نص إجباري عند "أخرى"، زر أحمر. بعدها البطاقة في "خسر" المخفي، مع زر "إعادة فتح".
+
+## Acceptance Criteria
+1. إنشاء Lead بحقلين يظهر فورًا في "جديد" بموعد +24h.
+2. هاتف محلي يُحفظ `+974...` ويظهر كرابط واتساب يعمل.
+3. هاتف مكرر: تحذير بالاسم، لا منع.
+4. السحب بين الأعمدة الأربعة يغيّر المرحلة ويثبت بعد التحديث.
+5. السحب إلى فاز/خسر غير ممكن من الـBoard.
+6. تفاعل صادر على Lead "جديد" ينقله إلى "تم التواصل".
+7. تفاعل مع تاريخ متابعة يحدّث الموعد في نفس الحفظ.
+8. المتأخر أحمر بحد أحمر، وفلتر "المتأخرون" يعرضه وحده.
+9. موعد اليوم كهرماني.
+10. تعيين مالك آخر يغيّر الحرفين، وفلتر المالك يعمل.
+11. الإغلاق كخاسر لا يُحفظ بلا سبب، و"أخرى" لا تُحفظ بلا نص.
+12. الخاسر يختفي من الأعمدة ويظهر عند "إظهار المغلقين" مع إعادة فتح تعمل.
+13. البحث بجزء من الاسم أو الهاتف يفلتر فورًا.
+14. الجدول الزمني يدمج التفاعلات والأحداث بالترتيب الصحيح مع الفاعل والوقت.
+15. لا تغيير حالة/تعيين/إغلاق بدون ActivityLog.
+16. STAFF لا يعيّن لغيره ولا يعيد فتح خاسر (حتى بلا STAFF اليوم).
+17. عربي RTL وإنجليزي LTR بلا نص ناقص.
+18. سكربت اختبار على الخلفية المنشورة ينشئ ويحرّك ويسجل ويغلق ويحذف وينجح.
+19. typecheck ناجح، CI أخضر، مدموج عبر مراجعة.
+
+## What NOT to build
+AI (حتى زر معطل) · تكامل واتساب · "حوّل إلى عميل" وكيان Client · العروض والكتالوج · استيراد CSV أو `sales/leads.md` (الإدخال يدوي عمدًا) · مراحل مخصصة · Tags/نجوم/scoring · إجراءات جماعية · مرفقات على Lead · تعليقات على Lead · تعدد جهات اتصال · إشعارات وشارات · تقارير · دمج مكررات · تصدير · ثيم داكن · لوحة كل التفاعلات · ترتيب يدوي داخل العمود · حذف Lead (الأرشفة = LOST).
+
+----- END FILE: docs/sprints/sprint-1.md -----
+
+
+----- FILE: docs/implementation-plan.md -----
+# Fontain OS — Implementation Plan (معتمد مبدئيًا)
+
+## 1. Team Split
+- **Dev A (Backend):** يملك `amplify/`، `scripts/`، `shared/`. Sprint 0: 001، 004، 005، 006، 007، 009، وملف `amplify.yml` في 010. Sprint 1: نماذج Lead/Interaction، الـMutations الثمانية، الفهارس، اختبار التكامل، تطبيع الهاتف في `shared/`.
+- **Dev B (Frontend):** يملك `app/`، `src/`. Sprint 0: 002، 003، 008. Sprint 1: Board، Card، Detail، الجدول الزمني، نموذج التفاعل، نافذة الإغلاق، الفلاتر والبحث.
+- **عقد Sprint 1 أولًا:** يوم 1 يكتب A توقيعات الـMutations في `shared/contracts/leads.ts` ويدمجها، وB يبدأ على بيانات وهمية بنفس الأنواع.
+- **Claude Code مع A:** "لا تلمس app/ و src/". **مع B:** "لا تلمس amplify/ و shared/". `docs/` و`AGENTS.md` يعدّلهما شخص واحد لكل PR. كل جلسة من فرع جديد من main محدّث، وتنتهي بـPR واحد.
+
+## 2. Repository Structure
+```
+fontain-os/
+├── app/                 # مسارات Next.js فقط، رفيعة: (auth)/login، app/…، portal/…، layout.tsx
+├── src/
+│   ├── features/        # leads/ clients/ tasks/ finance/ inbox/ portal/ → components/ hooks/ api.ts i18n.ts
+│   ├── components/      # ui/ (Button, Input, Dialog, Badge, Drawer) · layout/ (Sidebar, Topbar, PageHeader)
+│   ├── lib/             # amplify client، auth session، helpers
+│   └── i18n/            # en.ts, ar.ts, provider, useT
+├── amplify/
+│   ├── backend.ts · auth/ · data/ (resource.ts + models/) · storage/
+│   ├── functions/       # leads/ work/ sales/ finance/ decisions/ user-manager/
+│   └── shared/          # appsync.ts, cognito.ts, activity.ts, otp/, phone.ts
+├── shared/              # enums.ts · contracts/ · validators/  (يُستورد من الطرفين)
+├── scripts/             # check-backend.mjs, seed-*.mjs, test-*.mjs, logs.mjs
+├── tests/               # vitest بنفس هيكل src/ و shared/
+├── docs/                # DECISIONS.md, blueprint.md, sprints/
+├── .github/             # workflows/ci.yml, pull_request_template.md, CODEOWNERS
+├── AGENTS.md · README.md · CONTRIBUTING.md
+```
+السبب: `app/` رفيع و`features/` سمين يمنع التعارض؛ `shared/` محايد كعقد بين الطرفين؛ Lambda لكل مجموعة لا لكل mutation؛ `scripts/` بفلسفة Stars؛ مواصفات الـSprints بجانب الكود.
+
+## 3. Environments
+| البيئة | ما هي | من/متى | لا يكسر |
+|---|---|---|---|
+| Local | `next dev` + sandbox المطور | كل مطور دائمًا | شيئًا خارج جهازه |
+| Developer sandbox | `ampx sandbox --identifier dev-x`، خلفية كاملة باسمه | كل مطور، تُعاد بحرية | sandbox الآخر والإنتاج |
+| Pull Request | CI: typecheck، lint، unit، `next build`. لا نشر خلفية للـPR في V1 | تلقائي | لا يلمس بيئة |
+| Production | Amplify Hosting على `main` بخلفيته ودور خدمة | عند الدمج فقط | لا يصل أحد إلا عبر PR |
+
+الحماية: لا access keys للإنتاج على أي جهاز (D-53)؛ المطورون IAM Identity Center بصلاحية sandbox، والأفضل حساب AWS منفصل للـsandboxes؛ جداول الإنتاج بحماية حذف + PITR؛ schema إضافي فقط.
+
+## 4. Secrets & Config
+| العنصر | التصنيف | أين |
+|---|---|---|
+| مفتاح Claude API | Secret | Amplify `secret('ANTHROPIC_API_KEY')` (SSM مشفّر) أو Secrets Manager عبر SDK؛ تقرأه الـLambda فقط |
+| Twilio/SNS | Secret | نفس الآلية |
+| بيانات AWS | Secret | جلسات SSO قصيرة على جهاز المطور، ليست في المشروع |
+| `amplify_outputs.json` | Config مولَّد | لا يُرفع لـGit؛ Amplify Hosting يولّده للإنتاج |
+| المنطقة، افتراضيات المؤسسة | Config | `backend.ts` وسجل Organization |
+| أعلام الميزات | Config | حقول Organization من Settings |
+| `NEXT_PUBLIC_*` | Config عام | `.env.local` محليًا، Console للإنتاج. **لا سر فيها أبدًا** |
+
+## 5. Test Strategy
+- **تلقائي (CI):** typecheck، lint، وحدة للمنطق النقي (الهاتف، متأخر، الانتقالات، اكتمال ar/en، حسابات المال)، `next build`.
+- **يدوي قبل PR:** سكربت تكامل الميزة على sandbox ومخرجاته في الـPR؛ جولة عربي ثم إنجليزي على عرض الجوال.
+- **قبل الدمج:** CI أخضر، موافقة مراجع، مخرجات التكامل، DoD مؤشرة.
+- **بعد النشر:** Amplify build أخضر، `check-backend.mjs` على الإنتاج، دخول Owner من الهاتف.
+- **لا نبني:** E2E بالمتصفح، تغطية مستهدفة، snapshots.
+
+## 6. Git Workflow (مثال FOS-101 Create Lead)
+1. المهمة في `docs/sprints/sprint-1.md` ببند قبول.
+2. `git checkout main && git pull && git checkout -b feature/FOS-101-create-lead`
+3. Claude Code: "نفّذ FOS-101 حسب المواصفة… لا تلمس app/ و src/."
+4. المطور يقرأ الفرق كاملًا، يشغّل sandbox والسكربت، يصلح.
+5. `git commit -m "FOS-101: add Lead model and createLead mutation"` ثم push.
+6. PR بقالب المستودع. CI تلقائيًا.
+7. المطور الآخر (أو Owner) يراجع.
+8. CI أخضر + موافقة → Squash merge، حذف الفرع.
+9. Amplify ينشر main؛ `check-backend.mjs` على الإنتاج؛ المهمة "منشور".
+قواعد: فرع لكل مهمة، PR لكل فرع، لا PR يتجاوز مهمة، لا دمج ذاتي.
+
+## 7. Definition of Done
+1. بند القبول يعمل على sandbox. 2. عربي RTL وإنجليزي LTR بلا نقص. 3. 400px بلا تمرير أفقي. 4. ActivityLog وDecisionItem حيث تنص المواصفة. 5. الصلاحيات في الخادم واختُبر الرفض. 6. لا سر ولا ملف مولَّد. 7. CI أخضر. 8. سكربت تكامل موجود ونجح ومخرجاته في الـPR. 9. مراجع وافق، دُمج بـsquash. 10. المواصفة/DECISIONS محدّثة إن لزم.
+
+## 8. Rollback
+- **أ. واجهة/Lambda:** Amplify Console → Redeploy آخر نشرة مستقرة (دقيقتان) → `git revert` لcommit الدمج عبر PR → المهمة تعود مفتوحة.
+- **ب. schema:** آمن لأن التغييرات إضافية؛ revert كما أعلاه؛ لا حذف حقول.
+- **ج. بيانات:** DynamoDB PITR إلى جدول جديد → نسخ المتضرر فقط → ActivityLog يحدد من فعل ماذا.
+- الوقاية: الميزة الخطرة خلف علم في Organization مطفأ.
+
+## 9. AGENTS.md — قاعدة DECISION REQUIRED (نص معتمد)
+```
+## DECISION REQUIRED
+أثناء أي مهمة، إذا احتجت إلى: تغيير معماري، Model جديد غير موجود في المواصفة،
+مكتبة أو اعتمادية رئيسية جديدة، تغيير قرار في docs/DECISIONS.md، أو توسيع نطاق المهمة،
+فتوقف فورًا ولا تنفذ. اطبع:
+
+DECISION REQUIRED
+السبب: ...
+الخيارات: 1) ... 2) ... 3) ...
+توصيتي: ...
+
+ثم انتظر اعتماد إنسان. لا تكمل المهمة بافتراض الخيار الأرجح.
+```
+
+----- END FILE: docs/implementation-plan.md -----
